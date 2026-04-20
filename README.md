@@ -1,59 +1,222 @@
-<p align="center"><a href="https://laravel.com" target="_blank"><img src="https://raw.githubusercontent.com/laravel/art/master/logo-lockup/5%20SVG/2%20CMYK/1%20Full%20Color/laravel-logolockup-cmyk-red.svg" width="400" alt="Laravel Logo"></a></p>
+# EduNotas
 
-<p align="center">
-<a href="https://github.com/laravel/framework/actions"><img src="https://github.com/laravel/framework/workflows/tests/badge.svg" alt="Build Status"></a>
-<a href="https://packagist.org/packages/laravel/framework"><img src="https://img.shields.io/packagist/dt/laravel/framework" alt="Total Downloads"></a>
-<a href="https://packagist.org/packages/laravel/framework"><img src="https://img.shields.io/packagist/v/laravel/framework" alt="Latest Stable Version"></a>
-<a href="https://packagist.org/packages/laravel/framework"><img src="https://img.shields.io/packagist/l/laravel/framework" alt="License"></a>
-</p>
+Sistema web de gestion academica desarrollado en Laravel para el control de notas escolares, familias, perfiles de acceso, reportes y seguimiento administrativo.
 
-## About Laravel
+## Descripcion
 
-Laravel is a web application framework with expressive, elegant syntax. We believe development must be an enjoyable and creative experience to be truly fulfilling. Laravel takes the pain out of development by easing common tasks used in many web projects, such as:
+EduNotas centraliza la administracion academica de un centro escolar en una sola plataforma. El sistema permite registrar estructuras academicas, alumnos, docentes, materias, notas, familias, usuarios internos y permisos por perfil, manteniendo historial y desactivacion logica de los registros.
 
-- [Simple, fast routing engine](https://laravel.com/docs/routing).
-- [Powerful dependency injection container](https://laravel.com/docs/container).
-- Multiple back-ends for [session](https://laravel.com/docs/session) and [cache](https://laravel.com/docs/cache) storage.
-- Expressive, intuitive [database ORM](https://laravel.com/docs/eloquent).
-- Database agnostic [schema migrations](https://laravel.com/docs/migrations).
-- [Robust background job processing](https://laravel.com/docs/queues).
-- [Real-time event broadcasting](https://laravel.com/docs/broadcasting).
+El proyecto fue montado para ejecutarse en entorno local con XAMPP, PHP 8.2 y MySQL.
 
-Laravel is accessible, powerful, and provides tools required for large, robust applications.
+## Funcionalidades principales
 
-## Learning Laravel
+- Dashboard administrativo con resumen general del sistema.
+- Mantenimiento de secciones.
+- Mantenimiento de alumnos.
+- Mantenimiento de profesores.
+- Mantenimiento de materias.
+- Mantenimiento de familias con vinculacion por parentesco.
+- Mantenimiento de notas con auditoria de cambios.
+- Mantenimiento de envios de correo.
+- Consulta de boletines y consolidado por estudiante.
+- Mantenimiento de usuarios.
+- Mantenimiento de perfiles y permisos por menu.
+- Login por usuario y control de acceso segun perfil.
+- Eliminacion logica en modulos administrativos.
+- Alertas visuales con SweetAlert2.
+- Filtros rapidos en usuarios, notas, correos y perfiles.
 
-Laravel has the most extensive and thorough [documentation](https://laravel.com/docs) and video tutorial library of all modern web application frameworks, making it a breeze to get started with the framework. You can also check out [Laravel Learn](https://laravel.com/learn), where you will be guided through building a modern Laravel application.
+## Modulos del sistema
 
-If you don't feel like reading, [Laracasts](https://laracasts.com) can help. Laracasts contains thousands of video tutorials on a range of topics including Laravel, modern PHP, unit testing, and JavaScript. Boost your skills by digging into our comprehensive video library.
+### 1. Dashboard
 
-## Laravel Sponsors
+- Totales de alumnos, secciones, profesores y notas.
+- Vista rapida de actividad academica.
+- Base para ampliacion de indicadores.
 
-We would like to extend our thanks to the following sponsors for funding Laravel development. If you are interested in becoming a sponsor, please visit the [Laravel Partners program](https://partners.laravel.com).
+### 2. Academico
 
-### Premium Partners
+- Secciones: grado, nombre y anio escolar.
+- Alumnos: asignacion por seccion y promedio general.
+- Profesores: especialidad, correo y asignaciones.
+- Materias: control de catalogo academico.
+- Asignaciones: relacion entre materia, seccion y profesor.
 
-- **[Vehikl](https://vehikl.com)**
-- **[Tighten Co.](https://tighten.co)**
-- **[Kirschbaum Development Group](https://kirschbaumdevelopment.com)**
-- **[64 Robots](https://64robots.com)**
-- **[Curotec](https://www.curotec.com/services/technologies/laravel)**
-- **[DevSquad](https://devsquad.com/hire-laravel-developers)**
-- **[Redberry](https://redberry.international/laravel-development)**
-- **[Active Logic](https://activelogic.com)**
+### 3. Notas
 
-## Contributing
+- Registro de nota por alumno, asignacion, trimestre y categoria.
+- Edicion de notas.
+- Desactivacion logica de notas.
+- Tablero consolidado por asignacion y trimestre.
+- Auditoria de insercion, actualizacion y desactivacion.
 
-Thank you for considering contributing to the Laravel framework! The contribution guide can be found in the [Laravel documentation](https://laravel.com/docs/contributions).
+### 4. Familias
 
-## Code of Conduct
+- Registro de miembros familiares.
+- Asociacion de un familiar con uno o varios alumnos.
+- Manejo de parentesco: padre, madre, tio, tia, hermano, hermana, abuelo, abuela, encargado u otro.
 
-In order to ensure that the Laravel community is welcoming to all, please review and abide by the [Code of Conduct](https://laravel.com/docs/contributions#code-of-conduct).
+### 5. Correos
 
-## Security Vulnerabilities
+- Registro de envios por plantilla, familiar, alumno y trimestre.
+- Control de estado: pendiente, enviado o fallido.
+- Validacion de relacion real entre familiar y alumno.
 
-If you discover a security vulnerability within Laravel, please send an e-mail to Taylor Otwell via [taylor@laravel.com](mailto:taylor@laravel.com). All security vulnerabilities will be promptly addressed.
+### 6. Boletines
 
-## License
+- Vista consolidada por alumno.
+- Filtros por seccion, alumno y trimestre.
+- Promedios por materia y promedio global.
 
-The Laravel framework is open-sourced software licensed under the [MIT license](https://opensource.org/licenses/MIT).
+### 7. Usuarios y seguridad
+
+- Usuarios internos con perfil asignado.
+- Login con autenticacion Laravel.
+- Cierre de sesion.
+- Restriccion de acceso por opcion de menu.
+- Menu lateral visible solo segun permisos del perfil.
+
+### 8. Perfiles y permisos
+
+- Creacion y mantenimiento de perfiles.
+- Asignacion de accesos por menu.
+- Control centralizado de permisos.
+
+## Tecnologias utilizadas
+
+- PHP 8.2
+- Laravel 12
+- MySQL / MariaDB
+- Blade
+- AdminLTE 3
+- Bootstrap 4
+- SweetAlert2
+- jQuery
+- Git y GitHub
+- XAMPP para entorno local
+
+## Estructura tecnica destacada
+
+- Migraciones para esquema academico y seguridad.
+- Seeders con datos de ejemplo.
+- Modelos Eloquent para usuarios, roles, menus, notas, familias y correos.
+- Controladores separados por modulo.
+- Middleware personalizado para control de acceso por menu.
+- Vistas Blade organizadas por modulo dentro de `resources/views/panel`.
+
+## Base de datos
+
+La aplicacion utiliza la base de datos `pad`.
+
+Incluye migraciones para:
+
+- estructura academica
+- control de notas
+- auditoria
+- familias y parentescos
+- envios de correo
+- perfiles, menus y permisos
+
+## Instalacion
+
+### Requisitos
+
+- PHP 8.2 o superior
+- Composer
+- MySQL o MariaDB
+- XAMPP o entorno equivalente
+
+### Pasos
+
+1. Clonar el repositorio.
+2. Entrar al proyecto:
+
+```bash
+cd C:\xampp\htdocs\Pad
+```
+
+3. Instalar dependencias:
+
+```bash
+composer install
+```
+
+4. Copiar variables de entorno:
+
+```bash
+copy .env.example .env
+```
+
+5. Configurar la conexion MySQL en `.env`.
+
+6. Generar clave de aplicacion:
+
+```bash
+php artisan key:generate
+```
+
+7. Ejecutar migraciones y seeders:
+
+```bash
+php artisan migrate --seed
+```
+
+8. Abrir en navegador:
+
+```text
+http://localhost/pad/login
+```
+
+## Credenciales por defecto
+
+Usuario administrativo de prueba:
+
+- Usuario: `admin`
+- Contrasena: `123456`
+
+## Rutas principales
+
+- `/pad/login`
+- `/pad/`
+- `/pad/secciones`
+- `/pad/alumnos`
+- `/pad/profesores`
+- `/pad/materias`
+- `/pad/familias`
+- `/pad/notas`
+- `/pad/report-card`
+- `/pad/correos`
+- `/pad/usuarios`
+- `/pad/perfiles`
+- `/pad/configuracion`
+
+## Estado actual del proyecto
+
+El sistema ya cuenta con:
+
+- CRUD funcional en los modulos principales.
+- permisos por perfil conectados al menu y a las rutas.
+- autenticacion de usuarios.
+- filtros rapidos en varias pantallas.
+- desactivacion logica en lugar de eliminacion fisica en mantenimientos clave.
+
+## Notas de desarrollo
+
+- El archivo `.env` no se versiona.
+- `vendor`, `node_modules`, `storage` sensible y artefactos locales estan excluidos por `.gitignore`.
+- El proyecto esta pensado para continuar creciendo con reportes, exportaciones y control mas fino de acciones por perfil.
+
+## Posibles mejoras futuras
+
+- Exportacion a PDF y Excel.
+- Recuperacion de contrasena.
+- Historial de actividad por usuario.
+- Permisos por accion ademas de permisos por menu.
+- Panel de reportes estadisticos avanzados.
+- Integracion real con servicio de correo SMTP.
+
+## Autor
+
+Repositorio publicado en:
+
+[https://github.com/aerivz/pad](https://github.com/aerivz/pad)
