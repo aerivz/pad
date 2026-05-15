@@ -2,8 +2,10 @@
 
 use App\Http\Controllers\AuthController;
 use App\Http\Controllers\EmailDispatchController;
+use App\Http\Controllers\EmailTemplateController;
 use App\Http\Controllers\EvaluationController;
 use App\Http\Controllers\GuardianController;
+use App\Http\Controllers\MenuManagementController;
 use App\Http\Controllers\PanelController;
 use App\Http\Controllers\RolePermissionController;
 use App\Http\Controllers\SectionController;
@@ -67,6 +69,9 @@ Route::prefix('pad')->group(function () {
         Route::post('/correos', [EmailDispatchController::class, 'store'])->middleware('menu.access:emails')->name('emails.store');
         Route::patch('/correos/{dispatch}', [EmailDispatchController::class, 'update'])->middleware('menu.access:emails')->name('emails.update');
         Route::delete('/correos/{dispatch}', [EmailDispatchController::class, 'destroy'])->middleware('menu.access:emails')->name('emails.destroy');
+        Route::post('/correos/plantillas', [EmailTemplateController::class, 'store'])->middleware('menu.access:emails')->name('emails.templates.store');
+        Route::patch('/correos/plantillas/{template}', [EmailTemplateController::class, 'update'])->middleware('menu.access:emails')->name('emails.templates.update');
+        Route::delete('/correos/plantillas/{template}', [EmailTemplateController::class, 'destroy'])->middleware('menu.access:emails')->name('emails.templates.destroy');
 
         Route::get('/usuarios', [PanelController::class, 'users'])->middleware('menu.access:users')->name('users.index');
         Route::post('/usuarios', [UserManagementController::class, 'store'])->middleware('menu.access:users')->name('users.store');
@@ -77,6 +82,11 @@ Route::prefix('pad')->group(function () {
         Route::post('/perfiles', [RolePermissionController::class, 'store'])->middleware('menu.access:profiles')->name('profiles.store');
         Route::patch('/perfiles/{role}', [RolePermissionController::class, 'update'])->middleware('menu.access:profiles')->name('profiles.update');
         Route::delete('/perfiles/{role}', [RolePermissionController::class, 'destroy'])->middleware('menu.access:profiles')->name('profiles.destroy');
+
+        Route::get('/menus', [PanelController::class, 'menus'])->middleware('menu.access:menus')->name('menus.index');
+        Route::post('/menus', [MenuManagementController::class, 'store'])->middleware('menu.access:menus')->name('menus.store');
+        Route::patch('/menus/{menu}', [MenuManagementController::class, 'update'])->middleware('menu.access:menus')->name('menus.update');
+        Route::delete('/menus/{menu}', [MenuManagementController::class, 'destroy'])->middleware('menu.access:menus')->name('menus.destroy');
 
         Route::get('/configuracion', [PanelController::class, 'config'])->middleware('menu.access:config')->name('config.index');
     });

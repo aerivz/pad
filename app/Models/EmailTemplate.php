@@ -5,20 +5,16 @@ namespace App\Models;
 use Illuminate\Database\Eloquent\Builder;
 use Illuminate\Database\Eloquent\Model;
 
-class Menu extends Model
+class EmailTemplate extends Model
 {
-    protected $table = 'menus';
+    protected $table = 'plantillas_correo';
 
     public $timestamps = false;
 
     protected $fillable = [
-        'clave',
         'nombre',
-        'descripcion',
-        'icono',
-        'url',
-        'tablas_relacionadas',
-        'orden',
+        'asunto',
+        'cuerpo_html',
         'activo',
     ];
 

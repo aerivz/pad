@@ -58,8 +58,58 @@
                 </form>
             </div>
         </div>
+
+        <div class="card mt-3">
+            <div class="card-header"><h3 class="card-title">{{ $editTemplate ? 'Editar plantilla' : 'Nueva plantilla de correo' }}</h3></div>
+            <div class="card-body">
+                <form method="POST" action="{{ $editTemplate ? '/pad/correos/plantillas/'.$editTemplate->id : '/pad/correos/plantillas' }}">
+                    @csrf
+                    @if ($editTemplate) @method('PATCH') @endif
+                    <div class="form-group">
+                        <label>Nombre interno</label>
+                        <input type="text" name="nombre" class="form-control" value="{{ old('nombre', $editTemplate->nombre ?? '') }}" placeholder="reporte_trimestral" required>
+                    </div>
+                    <div class="form-group">
+                        <label>Asunto</label>
+                        <input type="text" name="asunto" class="form-control" value="{{ old('asunto', $editTemplate->asunto ?? '') }}" placeholder="Reporte de notas" required>
+                    </div>
+                    <div class="form-group">
+                        <label>Cuerpo HTML</label>
+                        <textarea name="cuerpo_html" rows="8" class="form-control" placeholder="<h1>Hola</h1><p>Contenido...</p>" required>{{ old('cuerpo_html', $editTemplate->cuerpo_html ?? '') }}</textarea>
+                        <small class="text-muted">Puedes usar HTML basico para asunto y contenido del mensaje.</small>
+                    </div>
+                    <button class="btn btn-success btn-sm">{{ $editTemplate ? 'Guardar plantilla' : 'Agregar plantilla' }}</button>
+                    @if ($editTemplate)<a href="/pad/correos" class="btn btn-default btn-sm">Cancelar</a>@endif
+                </form>
+            </div>
+        </div>
     </div>
     <div class="col-lg-8">
+        <div class="card">
+            <div class="card-header"><h3 class="card-title">Plantillas configuradas</h3></div>
+            <div class="card-body table-responsive p-0">
+                <table class="table table-hover">
+                    <thead class="bg-light"><tr><th>#</th><th>Nombre</th><th>Asunto</th><th>Vista previa</th><th>Acciones</th></tr></thead>
+                    <tbody>
+                    @forelse ($templateCatalog as $template)
+                        <tr>
+                            <td>{{ $template->id }}</td>
+                            <td><strong>{{ $template->nombre }}</strong></td>
+                            <td>{{ $template->asunto }}</td>
+                            <td><div style="max-width:320px; white-space:nowrap; overflow:hidden; text-overflow:ellipsis;">{{ strip_tags($template->cuerpo_html) }}</div></td>
+                            <td class="action-cell">
+                                <a href="/pad/correos?edit_template={{ $template->id }}" class="btn btn-xs btn-warning">Editar</a>
+                                <form method="POST" action="{{ '/pad/correos/plantillas/'.$template->id }}" data-swal-confirm="true" data-swal-title="Desactivar plantilla" data-swal-text="La plantilla ya no aparecera en nuevos envios, pero no se eliminara fisicamente." data-swal-confirm-label="Si, desactivar">@csrf @method('DELETE')<button class="btn btn-xs btn-danger">Desactivar</button></form>
+                            </td>
+                        </tr>
+                    @empty
+                        <tr><td colspan="5" class="text-center text-muted">No hay plantillas activas.</td></tr>
+                    @endforelse
+                    </tbody>
+                </table>
+            </div>
+        </div>
+
         <div class="card">
             <div class="card-header">
                 <h3 class="card-title">Historial de correos</h3>

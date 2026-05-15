@@ -4,6 +4,7 @@ namespace App\Http\Controllers;
 
 use Barryvdh\DomPDF\Facade\Pdf;
 use App\Models\EmailDispatch;
+use App\Models\EmailTemplate;
 use App\Models\CollectorCategory;
 use App\Models\Guardian;
 use App\Models\Menu;
@@ -174,11 +175,13 @@ class PanelController extends Controller
             ...$this->baseData(),
             'activeMenu' => 'emails',
             'emails' => $this->emailsData(),
-            'templates' => DB::table('plantillas_correo')->orderBy('nombre')->get(),
+            'templates' => EmailTemplate::active()->orderBy('nombre')->get(),
+            'templateCatalog' => EmailTemplate::active()->orderBy('nombre')->get(),
             'familyMembers' => Guardian::active()->orderBy('nombres')->orderBy('apellidos')->get(),
             'studentsForEmail' => $this->studentsForFamily(),
             'trimesters' => DB::table('trimestres')->orderBy('numero')->get(),
             'editEmail' => request()->filled('edit_email') ? EmailDispatch::active()->find(request()->integer('edit_email')) : null,
+            'editTemplate' => request()->filled('edit_template') ? EmailTemplate::active()->find(request()->integer('edit_template')) : null,
         ]);
     }
 
@@ -200,6 +203,16 @@ class PanelController extends Controller
             'profiles' => $this->profilesData(),
             'permissionMenus' => Menu::active()->orderBy('orden')->get(),
             'editProfile' => request()->filled('edit_profile') ? $this->profileForEdit(request()->integer('edit_profile')) : null,
+        ]);
+    }
+
+    public function menus(): View
+    {
+        return view('panel.menus', [
+            ...$this->baseData(),
+            'activeMenu' => 'menus',
+            'menus' => Menu::active()->orderBy('orden')->orderBy('id')->get(),
+            'editMenu' => request()->filled('edit_menu') ? Menu::active()->find(request()->integer('edit_menu')) : null,
         ]);
     }
 
@@ -412,7 +425,9 @@ class PanelController extends Controller
     {
         return DB::table('envios_correo as ec')
             ->where('ec.activo', true)
-            ->join('plantillas_correo as pc', 'pc.id', '=', 'ec.plantilla_id')
+            ->join('plantillas_correo as pc', function ($join) {
+                $join->on('pc.id', '=', 'ec.plantilla_id')->where('pc.activo', true);
+            })
             ->join('padres as p', function ($join) {
                 $join->on('p.id', '=', 'ec.padre_id')->where('p.activo', true);
             })
