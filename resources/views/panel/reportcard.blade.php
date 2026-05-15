@@ -38,6 +38,19 @@
             <div class="col-md-1 d-flex align-items-end">
                 <button class="btn btn-outline-primary btn-block">Ver</button>
             </div>
+            <div class="col-md-12 mt-3 d-flex justify-content-end">
+                @if (! empty($reportFilters['alumno_id']) || ! empty($reportFilters['seccion_id']))
+                    <a
+                        href="{{ route('reportcard.pdf', ['seccion_id' => $reportFilters['seccion_id'] ?? null, 'alumno_id' => $reportFilters['alumno_id'] ?? null]) }}"
+                        class="btn btn-danger"
+                        target="_blank"
+                    >
+                        {{ ! empty($reportFilters['alumno_id']) ? 'Descargar PDF anual' : 'Descargar PDF de seccion' }}
+                    </a>
+                @else
+                    <button type="button" class="btn btn-danger" disabled>Selecciona seccion o alumno para PDF</button>
+                @endif
+            </div>
         </form>
     </div>
 </div>

@@ -2,8 +2,8 @@
 
 use App\Http\Controllers\AuthController;
 use App\Http\Controllers\EmailDispatchController;
+use App\Http\Controllers\EvaluationController;
 use App\Http\Controllers\GuardianController;
-use App\Http\Controllers\NoteController;
 use App\Http\Controllers\PanelController;
 use App\Http\Controllers\RolePermissionController;
 use App\Http\Controllers\SectionController;
@@ -53,11 +53,15 @@ Route::prefix('pad')->group(function () {
         Route::redirect('/padres', '/pad/familias');
 
         Route::get('/notas', [PanelController::class, 'gradeBook'])->middleware('menu.access:gradebook')->name('gradebook.index');
-        Route::post('/notas', [NoteController::class, 'store'])->middleware('menu.access:gradebook')->name('gradebook.store');
-        Route::patch('/notas/{note}', [NoteController::class, 'update'])->middleware('menu.access:gradebook')->name('gradebook.update');
-        Route::delete('/notas/{note}', [NoteController::class, 'destroy'])->middleware('menu.access:gradebook')->name('gradebook.destroy');
+        Route::post('/notas/categorias', [EvaluationController::class, 'store'])->middleware('menu.access:gradebook')->name('gradebook.categories.store');
+        Route::patch('/notas/categorias/{evaluation}', [EvaluationController::class, 'update'])->middleware('menu.access:gradebook')->name('gradebook.categories.update');
+        Route::delete('/notas/categorias/{evaluation}', [EvaluationController::class, 'destroy'])->middleware('menu.access:gradebook')->name('gradebook.categories.destroy');
+        Route::post('/notas/calificaciones', [EvaluationController::class, 'syncScores'])->middleware('menu.access:gradebook')->name('gradebook.scores.sync');
+        Route::post('/notas/importar', [EvaluationController::class, 'import'])->middleware('menu.access:gradebook')->name('gradebook.import');
+        Route::get('/notas/plantillas/{template}', [EvaluationController::class, 'template'])->middleware('menu.access:gradebook')->name('gradebook.templates');
 
         Route::get('/report-card', [PanelController::class, 'reportCard'])->middleware('menu.access:reportcard')->name('reportcard.index');
+        Route::get('/report-card/pdf', [PanelController::class, 'reportCardPdf'])->middleware('menu.access:reportcard')->name('reportcard.pdf');
 
         Route::get('/correos', [PanelController::class, 'emails'])->middleware('menu.access:emails')->name('emails.index');
         Route::post('/correos', [EmailDispatchController::class, 'store'])->middleware('menu.access:emails')->name('emails.store');
