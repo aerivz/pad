@@ -13,9 +13,33 @@ use App\Http\Controllers\StudentController;
 use App\Http\Controllers\SubjectController;
 use App\Http\Controllers\TeacherController;
 use App\Http\Controllers\UserManagementController;
+use App\Models\Menu;
+use Illuminate\Support\Facades\Auth;
 use Illuminate\Support\Facades\Route;
 
-Route::get('/', [AuthController::class, 'create']);
+Route::get('/', function () {
+    if (! Auth::check()) {
+        return app(AuthController::class)->create();
+    }
+
+    $user = request()->user();
+
+    if ($user?->hasMenuAccess('dashboard')) {
+        return app(PanelController::class)->dashboard();
+    }
+
+    $firstMenuKey = $user?->allowedMenuKeys()[0] ?? null;
+    $firstMenuUrl = $firstMenuKey
+        ? Menu::query()->where('clave', $firstMenuKey)->where('activo', true)->value('url')
+        : null;
+
+    if ($firstMenuUrl) {
+        return redirect($firstMenuUrl);
+    }
+
+    abort(403);
+});
+Route::redirect('/pad/pad', '/pad/');
 
 Route::prefix('pad')->group(function () {
     Route::middleware('guest')->group(function () {

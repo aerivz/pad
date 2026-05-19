@@ -80,6 +80,7 @@ class PanelController extends Controller
             'activeMenu' => 'guardians',
             'parents' => $this->guardiansData(),
             'studentsForFamily' => $this->studentsForFamily(),
+            'studentSections' => Section::active()->orderBy('grado')->orderBy('nombre')->get(['id', 'grado', 'nombre']),
             'relationshipOptions' => $this->relationshipOptions(),
             'editGuardian' => request()->filled('edit_guardian') ? $this->guardianForEdit(request()->integer('edit_guardian')) : null,
         ]);
@@ -179,6 +180,7 @@ class PanelController extends Controller
             'templateCatalog' => EmailTemplate::active()->orderBy('nombre')->get(),
             'familyMembers' => Guardian::active()->orderBy('nombres')->orderBy('apellidos')->get(),
             'studentsForEmail' => $this->studentsForFamily(),
+            'studentSections' => Section::active()->orderBy('grado')->orderBy('nombre')->get(['id', 'grado', 'nombre']),
             'trimesters' => DB::table('trimestres')->orderBy('numero')->get(),
             'editEmail' => request()->filled('edit_email') ? EmailDispatch::active()->find(request()->integer('edit_email')) : null,
             'editTemplate' => request()->filled('edit_template') ? EmailTemplate::active()->find(request()->integer('edit_template')) : null,
@@ -358,7 +360,7 @@ class PanelController extends Controller
                 $join->on('s.id', '=', 'a.seccion_id')->where('s.activo', true);
             })
             ->where('a.activo', true)
-            ->selectRaw("a.id, CONCAT(a.nombres, ' ', a.apellidos, ' - ', s.grado, ' ', s.nombre) as nombre_completo")
+            ->selectRaw("a.id, a.seccion_id, CONCAT(a.nombres, ' ', a.apellidos, ' - ', s.grado, ' ', s.nombre) as nombre_completo")
             ->orderBy('a.nombres')
             ->get();
     }

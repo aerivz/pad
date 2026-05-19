@@ -3,6 +3,9 @@
 @section('title', 'Correos')
 
 @section('content')
+@php
+    $emailStudentSectionId = collect($studentsForEmail)->firstWhere('id', (int) old('alumno_id', $editEmail->alumno_id ?? 0))->seccion_id ?? '';
+@endphp
 <div class="row">
     <div class="col-lg-4">
         <div class="card sticky-card">
@@ -29,11 +32,20 @@
                         </select>
                     </div>
                     <div class="form-group">
+                        <label>Seccion</label>
+                        <select class="form-control" id="email-section-filter">
+                            <option value="">Todas</option>
+                            @foreach ($studentSections as $section)
+                                <option value="{{ $section->id }}" @selected((string) $emailStudentSectionId === (string) $section->id)>{{ $section->grado }} {{ $section->nombre }}</option>
+                            @endforeach
+                        </select>
+                    </div>
+                    <div class="form-group">
                         <label>Alumno</label>
-                        <select name="alumno_id" class="form-control" required>
+                        <select name="alumno_id" class="form-control" id="email-student-filter" required>
                             <option value="">Seleccione un alumno</option>
                             @foreach ($studentsForEmail as $student)
-                                <option value="{{ $student->id }}" @selected(old('alumno_id', $editEmail->alumno_id ?? '') == $student->id)>{{ $student->nombre_completo }}</option>
+                                <option value="{{ $student->id }}" data-section-id="{{ $student->seccion_id }}" @selected(old('alumno_id', $editEmail->alumno_id ?? '') == $student->id)>{{ $student->nombre_completo }}</option>
                             @endforeach
                         </select>
                     </div>
@@ -180,3 +192,42 @@
     </div>
 </div>
 @endsection
+
+@push('scripts')
+<script>
+    document.addEventListener('DOMContentLoaded', function () {
+        const sectionSelect = document.getElementById('email-section-filter');
+        const studentSelect = document.getElementById('email-student-filter');
+
+        if (!sectionSelect || !studentSelect) {
+            return;
+        }
+
+        const syncStudents = function () {
+            const selectedSectionId = sectionSelect.value;
+            let selectedStudentStillVisible = false;
+
+            Array.from(studentSelect.options).forEach(function (option, index) {
+                if (index === 0) {
+                    option.hidden = false;
+                    return;
+                }
+
+                const visible = !selectedSectionId || option.dataset.sectionId === selectedSectionId;
+                option.hidden = !visible;
+
+                if (visible && option.value === studentSelect.value) {
+                    selectedStudentStillVisible = true;
+                }
+            });
+
+            if (!selectedStudentStillVisible) {
+                studentSelect.value = '';
+            }
+        };
+
+        sectionSelect.addEventListener('change', syncStudents);
+        syncStudents();
+    });
+</script>
+@endpush

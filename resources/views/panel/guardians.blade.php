@@ -4,10 +4,17 @@
 
 @section('content')
 @php
-    $familyMembers = old('members', $editGuardian?->students->map(fn ($student) => [
+    $studentSectionLookup = collect($studentsForFamily)->pluck('seccion_id', 'id');
+    $familyMembers = collect(old('members', $editGuardian?->students->map(fn ($student) => [
         'alumno_id' => $student->id,
         'parentesco' => $student->pivot->parentesco,
-    ])->values()->all() ?? [['alumno_id' => '', 'parentesco' => 'Padre']]);
+    ])->values()->all() ?? [['alumno_id' => '', 'parentesco' => 'Padre']]))
+        ->map(function ($member) use ($studentSectionLookup) {
+            $member['seccion_id'] = $member['seccion_id'] ?? ($studentSectionLookup[(int) ($member['alumno_id'] ?? 0)] ?? '');
+
+            return $member;
+        })
+        ->all();
 @endphp
 
 <div class="row">
@@ -32,11 +39,20 @@
                         @foreach ($familyMembers as $index => $member)
                             <div class="border rounded p-2 mb-2 family-link-row">
                                 <div class="form-group mb-2">
+                                    <label>Seccion</label>
+                                    <select class="form-control family-section-select" data-name="seccion_id">
+                                        <option value="">Todas</option>
+                                        @foreach ($studentSections as $section)
+                                            <option value="{{ $section->id }}" @selected((string) ($member['seccion_id'] ?? '') === (string) $section->id)>{{ $section->grado }} {{ $section->nombre }}</option>
+                                        @endforeach
+                                    </select>
+                                </div>
+                                <div class="form-group mb-2">
                                     <label>Alumno</label>
-                                    <select name="members[{{ $index }}][alumno_id]" class="form-control" required>
+                                    <select name="members[{{ $index }}][alumno_id]" class="form-control family-student-select" data-name="alumno_id" required>
                                         <option value="">Seleccione un alumno</option>
                                         @foreach ($studentsForFamily as $student)
-                                            <option value="{{ $student->id }}" @selected((string) ($member['alumno_id'] ?? '') === (string) $student->id)>{{ $student->nombre_completo }}</option>
+                                            <option value="{{ $student->id }}" data-section-id="{{ $student->seccion_id }}" @selected((string) ($member['alumno_id'] ?? '') === (string) $student->id)>{{ $student->nombre_completo }}</option>
                                         @endforeach
                                     </select>
                                 </div>
@@ -90,11 +106,20 @@
 <template id="family-link-template">
     <div class="border rounded p-2 mb-2 family-link-row">
         <div class="form-group mb-2">
+            <label>Seccion</label>
+            <select class="form-control family-section-select" data-name="seccion_id">
+                <option value="">Todas</option>
+                @foreach ($studentSections as $section)
+                    <option value="{{ $section->id }}">{{ $section->grado }} {{ $section->nombre }}</option>
+                @endforeach
+            </select>
+        </div>
+        <div class="form-group mb-2">
             <label>Alumno</label>
             <select class="form-control family-student-select" data-name="alumno_id" required>
                 <option value="">Seleccione un alumno</option>
                 @foreach ($studentsForFamily as $student)
-                    <option value="{{ $student->id }}">{{ $student->nombre_completo }}</option>
+                    <option value="{{ $student->id }}" data-section-id="{{ $student->seccion_id }}">{{ $student->nombre_completo }}</option>
                 @endforeach
             </select>
         </div>
@@ -123,15 +148,61 @@
         const refreshIndexes = function () {
             linksContainer.querySelectorAll('.family-link-row').forEach(function (row, index) {
                 row.querySelectorAll('[data-name]').forEach(function (field) {
+                    if (field.dataset.name === 'seccion_id') {
+                        field.removeAttribute('name');
+                        return;
+                    }
+
                     field.name = 'members[' + index + '][' + field.dataset.name + ']';
                 });
             });
+        };
+
+        const syncRowStudents = function (row) {
+            const sectionSelect = row.querySelector('.family-section-select');
+            const studentSelect = row.querySelector('.family-student-select');
+
+            if (!sectionSelect || !studentSelect) {
+                return;
+            }
+
+            const selectedSectionId = sectionSelect.value;
+            let selectedStudentStillVisible = false;
+
+            Array.from(studentSelect.options).forEach(function (option, index) {
+                if (index === 0) {
+                    option.hidden = false;
+                    return;
+                }
+
+                const visible = !selectedSectionId || option.dataset.sectionId === selectedSectionId;
+                option.hidden = !visible;
+
+                if (visible && option.value === studentSelect.value) {
+                    selectedStudentStillVisible = true;
+                }
+            });
+
+            if (!selectedStudentStillVisible) {
+                studentSelect.value = '';
+            }
+        };
+
+        const syncAllRows = function () {
+            linksContainer.querySelectorAll('.family-link-row').forEach(syncRowStudents);
         };
 
         addButton.addEventListener('click', function () {
             const clone = template.content.firstElementChild.cloneNode(true);
             linksContainer.appendChild(clone);
             refreshIndexes();
+            syncRowStudents(clone);
+        });
+
+        linksContainer.addEventListener('change', function (event) {
+            if (event.target.classList.contains('family-section-select')) {
+                syncRowStudents(event.target.closest('.family-link-row'));
+            }
         });
 
         linksContainer.addEventListener('click', function (event) {
@@ -149,6 +220,7 @@
         });
 
         refreshIndexes();
+        syncAllRows();
     });
 </script>
 @endsection

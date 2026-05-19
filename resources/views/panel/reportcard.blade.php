@@ -10,7 +10,7 @@
         <form method="GET" action="/pad/report-card" class="row">
             <div class="col-md-4">
                 <label>Seccion</label>
-                <select name="seccion_id" class="form-control">
+                <select name="seccion_id" class="form-control" id="report-section-filter">
                     <option value="">Todas</option>
                     @foreach ($reportSections as $section)
                         <option value="{{ $section->id }}" @selected(($reportFilters['seccion_id'] ?? null) == $section->id)>{{ $section->grado }} {{ $section->nombre }}</option>
@@ -19,10 +19,10 @@
             </div>
             <div class="col-md-4">
                 <label>Alumno</label>
-                <select name="alumno_id" class="form-control">
+                <select name="alumno_id" class="form-control" id="report-student-filter">
                     <option value="">Todos</option>
                     @foreach ($reportStudents as $student)
-                        <option value="{{ $student->id }}" @selected(($reportFilters['alumno_id'] ?? null) == $student->id)>{{ $student->nombre_completo }}</option>
+                        <option value="{{ $student->id }}" data-section-id="{{ $student->seccion_id }}" @selected(($reportFilters['alumno_id'] ?? null) == $student->id)>{{ $student->nombre_completo }}</option>
                     @endforeach
                 </select>
             </div>
@@ -94,3 +94,42 @@
     </div>
 </div>
 @endsection
+
+@push('scripts')
+<script>
+    document.addEventListener('DOMContentLoaded', function () {
+        const sectionSelect = document.getElementById('report-section-filter');
+        const studentSelect = document.getElementById('report-student-filter');
+
+        if (!sectionSelect || !studentSelect) {
+            return;
+        }
+
+        const syncStudents = function () {
+            const selectedSectionId = sectionSelect.value;
+            let selectedStudentStillVisible = false;
+
+            Array.from(studentSelect.options).forEach(function (option, index) {
+                if (index === 0) {
+                    option.hidden = false;
+                    return;
+                }
+
+                const belongsToSection = !selectedSectionId || option.dataset.sectionId === selectedSectionId;
+                option.hidden = !belongsToSection;
+
+                if (belongsToSection && option.value === studentSelect.value) {
+                    selectedStudentStillVisible = true;
+                }
+            });
+
+            if (!selectedStudentStillVisible) {
+                studentSelect.value = '';
+            }
+        };
+
+        sectionSelect.addEventListener('change', syncStudents);
+        syncStudents();
+    });
+</script>
+@endpush
