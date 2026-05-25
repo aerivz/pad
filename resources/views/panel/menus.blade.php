@@ -13,6 +13,16 @@
                     @if ($editMenu) @method('PATCH') @endif
 
                     <div class="form-group">
+                        <label>Menu padre</label>
+                        <select name="parent_id" class="form-control">
+                            <option value="">Sin padre</option>
+                            @foreach ($menus->where('id', '!=', $editMenu->id ?? 0) as $parentMenu)
+                                <option value="{{ $parentMenu->id }}" @selected((string) old('parent_id', $editMenu->parent_id ?? '') === (string) $parentMenu->id)>{{ $parentMenu->nombre }}</option>
+                            @endforeach
+                        </select>
+                    </div>
+
+                    <div class="form-group">
                         <label>Clave</label>
                         <input name="clave" class="form-control" value="{{ old('clave', $editMenu->clave ?? '') }}" placeholder="menus" required>
                     </div>
@@ -82,7 +92,12 @@
                                     <div class="small text-muted">{{ $menuItem->descripcion }}</div>
                                 @endif
                             </td>
-                            <td>{{ $menuItem->url }}</td>
+                            <td>
+                                {{ $menuItem->url }}
+                                @if ($menuItem->parent_id)
+                                    <div class="small text-muted">Submenu</div>
+                                @endif
+                            </td>
                             <td>
                                 @foreach (collect(explode(',', $menuItem->tablas_relacionadas ?? ''))->map(fn ($item) => trim($item))->filter() as $tableName)
                                     <span class="weight-pill">{{ $tableName }}</span>

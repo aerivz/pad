@@ -3,6 +3,8 @@
 namespace App\Models;
 
 use Illuminate\Database\Eloquent\Builder;
+use Illuminate\Database\Eloquent\Relations\BelongsTo;
+use Illuminate\Database\Eloquent\Relations\HasMany;
 use Illuminate\Database\Eloquent\Model;
 
 class Menu extends Model
@@ -12,6 +14,7 @@ class Menu extends Model
     public $timestamps = false;
 
     protected $fillable = [
+        'parent_id',
         'clave',
         'nombre',
         'descripcion',
@@ -32,5 +35,20 @@ class Menu extends Model
     public function scopeActive(Builder $query): Builder
     {
         return $query->where('activo', true);
+    }
+
+    public function parent(): BelongsTo
+    {
+        return $this->belongsTo(self::class, 'parent_id');
+    }
+
+    public function children(): HasMany
+    {
+        return $this->hasMany(self::class, 'parent_id')->where('activo', true)->orderBy('orden');
+    }
+
+    public function getResolvedUrlAttribute(): string
+    {
+        return app_nav_url($this->url);
     }
 }

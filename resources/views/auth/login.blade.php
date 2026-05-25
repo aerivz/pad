@@ -41,16 +41,26 @@
             margin: .35rem 0 0;
             opacity: .85;
         }
+        .login-logo {
+            width: 62px;
+            height: 62px;
+            object-fit: cover;
+            border-radius: 16px;
+            margin-bottom: 1rem;
+            background: rgba(255,255,255,.1);
+            padding: .35rem;
+        }
     </style>
 </head>
 <body>
     <div class="card login-card">
         <div class="login-header">
-            <h1><i class="fas fa-graduation-cap mr-2"></i>EduNotas</h1>
+            <img src="{{ app_media_url('images/defaults/logo.svg', 'images/defaults/logo.svg') }}" alt="Logo EduNotas" class="login-logo">
+            <h1>EduNotas</h1>
             <p>Ingresa con tu usuario para acceder segun tu perfil.</p>
         </div>
         <div class="card-body p-4">
-            <form method="POST" action="/pad/login">
+            <form method="POST" action="{{ route('login.store') }}">
                 @csrf
                 <div class="form-group">
                     <label>Usuario</label>

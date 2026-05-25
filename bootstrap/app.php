@@ -16,5 +16,13 @@ return Application::configure(basePath: dirname(__DIR__))
         ]);
     })
     ->withExceptions(function (Exceptions $exceptions): void {
-        //
+        $exceptions->render(function (\Symfony\Component\HttpKernel\Exception\HttpException $exception, \Illuminate\Http\Request $request) {
+            if ($exception->getStatusCode() === 419) {
+                return redirect()
+                    ->route('login')
+                    ->with('status', 'La sesion expiro. Ingresa nuevamente para continuar.');
+            }
+
+            return null;
+        });
     })->create();

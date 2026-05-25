@@ -40,6 +40,7 @@ class MenuManagementController extends Controller
     private function validateMenu(Request $request, ?Menu $menu = null): array
     {
         return $request->validate([
+            'parent_id' => ['nullable', 'integer', 'exists:menus,id', Rule::notIn([$menu?->id])],
             'clave' => [
                 'required',
                 'string',

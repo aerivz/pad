@@ -5,15 +5,18 @@ use App\Http\Controllers\EmailDispatchController;
 use App\Http\Controllers\EmailTemplateController;
 use App\Http\Controllers\EvaluationController;
 use App\Http\Controllers\GuardianController;
+use App\Http\Controllers\MediaController;
 use App\Http\Controllers\MenuManagementController;
 use App\Http\Controllers\PanelController;
 use App\Http\Controllers\RolePermissionController;
 use App\Http\Controllers\SectionController;
 use App\Http\Controllers\StudentController;
 use App\Http\Controllers\SubjectController;
+use App\Http\Controllers\SystemBackupController;
 use App\Http\Controllers\TeacherController;
 use App\Http\Controllers\UserManagementController;
 use App\Models\Menu;
+use App\Support\AppUrl;
 use Illuminate\Support\Facades\Auth;
 use Illuminate\Support\Facades\Route;
 
@@ -34,12 +37,15 @@ Route::get('/', function () {
         : null;
 
     if ($firstMenuUrl) {
-        return redirect($firstMenuUrl);
+        return redirect(AppUrl::menu($firstMenuUrl));
     }
 
     abort(403);
 });
 Route::redirect('/pad/pad', '/pad/');
+Route::get('/media/{path}', [MediaController::class, 'show'])
+    ->where('path', '.*')
+    ->name('media.show');
 
 Route::prefix('pad')->group(function () {
     Route::middleware('guest')->group(function () {
@@ -111,6 +117,10 @@ Route::prefix('pad')->group(function () {
         Route::post('/menus', [MenuManagementController::class, 'store'])->middleware('menu.access:menus')->name('menus.store');
         Route::patch('/menus/{menu}', [MenuManagementController::class, 'update'])->middleware('menu.access:menus')->name('menus.update');
         Route::delete('/menus/{menu}', [MenuManagementController::class, 'destroy'])->middleware('menu.access:menus')->name('menus.destroy');
+
+        Route::get('/backups', [PanelController::class, 'backups'])->middleware('menu.access:backups')->name('backups.index');
+        Route::post('/backups', [SystemBackupController::class, 'store'])->middleware('menu.access:backups')->name('backups.store');
+        Route::get('/backups/{backup}/download', [SystemBackupController::class, 'download'])->middleware('menu.access:backups')->name('backups.download');
 
         Route::get('/configuracion', [PanelController::class, 'config'])->middleware('menu.access:config')->name('config.index');
     });

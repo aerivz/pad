@@ -12,7 +12,7 @@ class AuthController extends Controller
     public function create(): View|RedirectResponse
     {
         if (Auth::check()) {
-            return redirect('/pad/');
+            return redirect()->route('dashboard');
         }
 
         return view('auth.login');
@@ -28,7 +28,7 @@ class AuthController extends Controller
         if (Auth::attempt(['nombre_usuario' => $credentials['nombre_usuario'], 'password' => $credentials['password'], 'activo' => true], $request->boolean('remember'))) {
             $request->session()->regenerate();
 
-            return redirect()->intended('/pad/');
+            return redirect()->intended(route('dashboard'));
         }
 
         return back()
@@ -43,6 +43,6 @@ class AuthController extends Controller
         $request->session()->invalidate();
         $request->session()->regenerateToken();
 
-        return redirect('/pad/login')->with('status', 'Sesion finalizada correctamente.');
+        return redirect()->route('login')->with('status', 'Sesion finalizada correctamente.');
     }
 }

@@ -30,6 +30,10 @@
         .filter-toolbar { display: flex; flex-wrap: wrap; gap: .75rem; align-items: end; }
         .filter-toolbar .form-group { margin-bottom: 0; min-width: 180px; }
         .swal2-popup { font-family: 'Source Sans Pro', sans-serif; }
+        .brand-image-logo { width: 32px; height: 32px; object-fit: cover; border-radius: 8px; margin-left: 8px; margin-right: .5rem; }
+        .user-avatar-image { width: 36px; height: 36px; border-radius: 50%; object-fit: cover; }
+        .user-avatar-sidebar { width: 34px; height: 34px; border-radius: 50%; object-fit: cover; }
+        .action-cell .btn { margin-bottom: .25rem; }
     </style>
 </head>
 <body class="hold-transition sidebar-mini layout-fixed">
@@ -37,17 +41,18 @@
     <nav class="main-header navbar navbar-expand navbar-white navbar-light">
         <ul class="navbar-nav">
             <li class="nav-item"><a class="nav-link" data-widget="pushmenu" href="#"><i class="fas fa-bars"></i></a></li>
-            <li class="nav-item d-none d-sm-inline-block"><a href="/pad/" class="nav-link text-muted small">Inicio / {{ $menu[$activeMenu]['label'] ?? 'Dashboard' }}</a></li>
+            <li class="nav-item d-none d-sm-inline-block"><a href="{{ route('dashboard') }}" class="nav-link text-muted small">Inicio / {{ $menu[$activeMenu]['label'] ?? 'Dashboard' }}</a></li>
         </ul>
         <ul class="navbar-nav ml-auto">
             <li class="nav-item dropdown">
                 @php($user = auth()->user())
                 @php($initials = strtoupper(substr($user->nombres ?? 'A', 0, 1).substr($user->apellidos ?? 'D', 0, 1)))
-                <a class="nav-link" data-toggle="dropdown" href="#"><span class="avatar-initials bg-primary mr-1">{{ $initials }}</span><span class="d-none d-md-inline text-sm">{{ trim(($user->nombres ?? '').' '.($user->apellidos ?? '')) ?: 'Usuario' }}</span></a>
+                @php($userAvatarUrl = $user?->avatar_url ?? app_media_url(null, 'images/defaults/avatar.svg'))
+                <a class="nav-link" data-toggle="dropdown" href="#"><img src="{{ $userAvatarUrl }}" alt="Avatar" class="user-avatar-image mr-1"><span class="d-none d-md-inline text-sm">{{ trim(($user->nombres ?? '').' '.($user->apellidos ?? '')) ?: 'Usuario' }}</span></a>
                 <div class="dropdown-menu dropdown-menu-right">
-                    <a href="/pad/" class="dropdown-item"><i class="fas fa-home mr-2"></i>Ir al dashboard</a>
+                    <a href="{{ route('dashboard') }}" class="dropdown-item"><i class="fas fa-home mr-2"></i>Ir al dashboard</a>
                     <div class="dropdown-divider"></div>
-                    <form method="POST" action="/pad/logout">
+                    <form method="POST" action="{{ route('logout') }}">
                         @csrf
                         <button type="submit" class="dropdown-item"><i class="fas fa-sign-out-alt mr-2"></i>Cerrar sesion</button>
                     </form>
@@ -57,25 +62,45 @@
     </nav>
 
     <aside class="main-sidebar sidebar-dark-navy elevation-4">
-        <a href="/pad/" class="brand-link">
-            <i class="fas fa-graduation-cap brand-image mr-2" style="font-size:1.4rem;color:#74b9ff;margin-left:8px;"></i>
+        <a href="{{ route('dashboard') }}" class="brand-link">
+            <img src="{{ app_media_url('images/defaults/logo.svg', 'images/defaults/logo.svg') }}" alt="Logo" class="brand-image-logo">
             <span class="brand-text">Edu<span>Notas</span></span>
         </a>
         <div class="sidebar">
             <div class="user-panel mt-3 pb-3 mb-3 d-flex">
-                <div class="image"><span class="avatar-initials bg-gradient-primary" style="width:34px;height:34px;font-size:.75rem;">{{ $initials }}</span></div>
+                <div class="image"><img src="{{ $userAvatarUrl }}" alt="Avatar" class="user-avatar-sidebar"></div>
                 <div class="info">
-                    <a href="/pad/" class="d-block text-white">{{ trim(($user->nombres ?? '').' '.($user->apellidos ?? '')) ?: 'Usuario' }}</a>
+                    <a href="{{ route('dashboard') }}" class="d-block text-white">{{ trim(($user->nombres ?? '').' '.($user->apellidos ?? '')) ?: 'Usuario' }}</a>
                     <small class="text-light text-capitalize">{{ $user->role->nombre ?? 'Sin perfil' }}</small>
                 </div>
             </div>
             <nav class="mt-2">
-                <ul class="nav nav-pills nav-sidebar flex-column">
+                <ul class="nav nav-pills nav-sidebar flex-column" data-widget="treeview" role="menu" data-accordion="false">
                     @foreach ($menu as $key => $item)
-                        <li class="nav-item">
-                            <a href="{{ $item['url'] }}" class="nav-link {{ $activeMenu === $key ? 'active' : '' }}">
-                                <i class="nav-icon {{ $item['icon'] }}"></i><p>{{ $item['label'] }}</p>
+                        @php($children = $item['children'] ?? [])
+                        @php($isChildActive = collect($children)->contains(fn ($child) => $activeMenu === $child['key']))
+                        <li class="nav-item {{ count($children) > 0 ? 'has-treeview '.(($activeMenu === $key || $isChildActive) ? 'menu-open' : '') : '' }}">
+                            <a href="{{ count($children) > 0 ? ($item['url'] === '#' ? '#' : $item['url']) : $item['url'] }}" class="nav-link {{ $activeMenu === $key || $isChildActive ? 'active' : '' }} {{ count($children) > 0 ? 'submenu-toggle' : '' }}" @if(count($children) > 0) data-submenu-toggle="true" @endif>
+                                <i class="nav-icon {{ $item['icon'] }}"></i>
+                                <p>
+                                    {{ $item['label'] }}
+                                    @if (count($children) > 0)
+                                        <i class="right fas fa-angle-left"></i>
+                                    @endif
+                                </p>
                             </a>
+                            @if (count($children) > 0)
+                                <ul class="nav nav-treeview">
+                                    @foreach ($children as $child)
+                                        <li class="nav-item">
+                                            <a href="{{ $child['url'] }}" class="nav-link {{ $activeMenu === $child['key'] ? 'active' : '' }}">
+                                                <i class="nav-icon {{ $child['icon'] ?: 'far fa-circle' }}"></i>
+                                                <p>{{ $child['label'] }}</p>
+                                            </a>
+                                        </li>
+                                    @endforeach
+                                </ul>
+                            @endif
                         </li>
                     @endforeach
                 </ul>
@@ -90,7 +115,7 @@
                     <div class="col-sm-6"><h1 class="m-0">@yield('title')</h1></div>
                     <div class="col-sm-6">
                         <ol class="breadcrumb float-sm-right">
-                            <li class="breadcrumb-item"><a href="/pad/">Inicio</a></li>
+                            <li class="breadcrumb-item"><a href="{{ route('dashboard') }}">Inicio</a></li>
                             <li class="breadcrumb-item active">@yield('title')</li>
                         </ol>
                     </div>
@@ -214,6 +239,25 @@
             });
 
             applyFilters();
+        });
+
+        document.querySelectorAll('.submenu-toggle[data-submenu-toggle="true"]').forEach(function (toggle) {
+            toggle.addEventListener('click', function (event) {
+                if (window.innerWidth >= 992) {
+                    return;
+                }
+
+                event.preventDefault();
+
+                const item = toggle.closest('.nav-item');
+
+                if (!item) {
+                    return;
+                }
+
+                item.classList.toggle('menu-open');
+                toggle.classList.toggle('active');
+            });
         });
     });
 </script>

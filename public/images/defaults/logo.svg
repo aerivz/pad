@@ -1,0 +1,6 @@
+<svg xmlns="http://www.w3.org/2000/svg" width="320" height="320" viewBox="0 0 320 320" role="img" aria-label="Logo EduNotas">
+  <rect width="320" height="320" rx="64" fill="#0b2545"/>
+  <path d="M82 228l44-136h29l44 136h-28l-8-28h-45l-8 28H82zm44-52h30l-15-54-15 54z" fill="#74b9ff"/>
+  <path d="M214 94h24v134h-24z" fill="#dbeafe"/>
+  <circle cx="226" cy="72" r="14" fill="#74b9ff"/>
+</svg>

@@ -12,6 +12,7 @@ use App\Models\Role;
 use App\Models\Section;
 use App\Models\Student;
 use App\Models\Subject;
+use App\Models\SystemBackup;
 use App\Models\Teacher;
 use App\Models\User;
 use Illuminate\Support\Collection;
@@ -226,6 +227,16 @@ class PanelController extends Controller
         ]);
     }
 
+    public function backups(): View
+    {
+        return view('panel.backups', [
+            ...$this->baseData(),
+            'activeMenu' => 'backups',
+            'backups' => $this->backupsData(),
+            'hasPendingBackups' => SystemBackup::query()->whereIn('estado', ['pendiente', 'procesando'])->exists(),
+        ]);
+    }
+
     private function baseData(): array
     {
         return [
@@ -246,20 +257,49 @@ class PanelController extends Controller
         $user = Auth::user();
 
         if ($user) {
-            $items = $items->whereIn('clave', $user->allowedMenuKeys())->values();
+            $allowedKeys = collect($user->allowedMenuKeys());
+            $allowedParentIds = $items
+                ->whereIn('clave', $allowedKeys)
+                ->pluck('parent_id')
+                ->filter()
+                ->all();
+
+            $items = $items
+                ->filter(fn (Menu $item) => $allowedKeys->contains($item->clave) || in_array($item->id, $allowedParentIds, true))
+                ->values();
         }
 
         if ($items->isEmpty()) {
             return [];
         }
 
-        return $items->mapWithKeys(fn (Menu $item) => [
-            $item->clave => [
-                'label' => $item->nombre,
-                'icon' => $item->icono,
-                'url' => $item->url,
-            ],
-        ])->all();
+        $childrenByParent = $items
+            ->whereNotNull('parent_id')
+            ->groupBy('parent_id');
+
+        return $items
+            ->whereNull('parent_id')
+            ->mapWithKeys(function (Menu $item) use ($childrenByParent) {
+                $children = ($childrenByParent[$item->id] ?? collect())
+                    ->map(fn (Menu $child) => [
+                        'key' => $child->clave,
+                        'label' => $child->nombre,
+                        'icon' => $child->icono,
+                        'url' => $child->resolved_url,
+                    ])
+                    ->values()
+                    ->all();
+
+                return [
+                    $item->clave => [
+                        'label' => $item->nombre,
+                        'icon' => $item->icono,
+                        'url' => $item->resolved_url,
+                        'children' => $children,
+                    ],
+                ];
+            })
+            ->all();
     }
 
     private function sectionsData()
@@ -478,6 +518,14 @@ class PanelController extends Controller
             ->select('an.*', 'u.nombre_usuario', 'n.alumno_id')
             ->orderByDesc('an.id')
             ->limit(5)
+            ->get();
+    }
+
+    private function backupsData()
+    {
+        return SystemBackup::query()
+            ->latestFirst()
+            ->with('user:id,nombre_usuario,nombres,apellidos')
             ->get();
     }
 

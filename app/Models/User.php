@@ -2,6 +2,7 @@
 
 namespace App\Models;
 
+use App\Models\Concerns\ResolvesMediaUrls;
 use Illuminate\Database\Eloquent\Factories\HasFactory;
 use Illuminate\Database\Eloquent\Builder;
 use Illuminate\Database\Eloquent\Relations\BelongsTo;
@@ -10,7 +11,7 @@ use Illuminate\Notifications\Notifiable;
 
 class User extends Authenticatable
 {
-    use HasFactory, Notifiable;
+    use HasFactory, Notifiable, ResolvesMediaUrls;
 
     protected $table = 'usuarios';
 
@@ -73,5 +74,15 @@ class User extends Authenticatable
     public function hasMenuAccess(string $menuKey): bool
     {
         return in_array($menuKey, $this->allowedMenuKeys(), true);
+    }
+
+    public function getAvatarUrlAttribute(): string
+    {
+        return $this->resolveMediaUrl(
+            data_get($this, 'avatar')
+            ?: data_get($this, 'imagen')
+            ?: data_get($this, 'foto'),
+            'images/defaults/avatar.svg'
+        );
     }
 }
