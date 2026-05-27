@@ -2,6 +2,7 @@
 
 namespace App\Http\Controllers;
 
+use App\Support\AppUrl;
 use Illuminate\Http\RedirectResponse;
 use Illuminate\Http\Request;
 use Illuminate\Support\Facades\Auth;
@@ -12,7 +13,7 @@ class AuthController extends Controller
     public function create(): View|RedirectResponse
     {
         if (Auth::check()) {
-            return redirect()->route('dashboard');
+            return redirect(AppUrl::route('dashboard'));
         }
 
         return view('auth.login');
@@ -28,7 +29,13 @@ class AuthController extends Controller
         if (Auth::attempt(['nombre_usuario' => $credentials['nombre_usuario'], 'password' => $credentials['password'], 'activo' => true], $request->boolean('remember'))) {
             $request->session()->regenerate();
 
-            return redirect()->intended(route('dashboard'));
+            $intended = $request->session()->pull('url.intended');
+
+            if (is_string($intended) && $intended !== '') {
+                return redirect(AppUrl::menu($intended));
+            }
+
+            return redirect(AppUrl::route('dashboard'));
         }
 
         return back()
@@ -43,6 +50,6 @@ class AuthController extends Controller
         $request->session()->invalidate();
         $request->session()->regenerateToken();
 
-        return redirect()->route('login')->with('status', 'Sesion finalizada correctamente.');
+        return redirect(AppUrl::route('login'))->with('status', 'Sesion finalizada correctamente.');
     }
 }

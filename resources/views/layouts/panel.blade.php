@@ -41,7 +41,7 @@
     <nav class="main-header navbar navbar-expand navbar-white navbar-light">
         <ul class="navbar-nav">
             <li class="nav-item"><a class="nav-link" data-widget="pushmenu" href="#"><i class="fas fa-bars"></i></a></li>
-            <li class="nav-item d-none d-sm-inline-block"><a href="{{ route('dashboard') }}" class="nav-link text-muted small">Inicio / {{ $menu[$activeMenu]['label'] ?? 'Dashboard' }}</a></li>
+            <li class="nav-item d-none d-sm-inline-block"><a href="{{ app_nav_url() }}" class="nav-link text-muted small">Inicio / {{ $menu[$activeMenu]['label'] ?? 'Dashboard' }}</a></li>
         </ul>
         <ul class="navbar-nav ml-auto">
             <li class="nav-item dropdown">
@@ -50,9 +50,9 @@
                 @php($userAvatarUrl = $user?->avatar_url ?? app_media_url(null, 'images/defaults/avatar.svg'))
                 <a class="nav-link" data-toggle="dropdown" href="#"><img src="{{ $userAvatarUrl }}" alt="Avatar" class="user-avatar-image mr-1"><span class="d-none d-md-inline text-sm">{{ trim(($user->nombres ?? '').' '.($user->apellidos ?? '')) ?: 'Usuario' }}</span></a>
                 <div class="dropdown-menu dropdown-menu-right">
-                    <a href="{{ route('dashboard') }}" class="dropdown-item"><i class="fas fa-home mr-2"></i>Ir al dashboard</a>
+                    <a href="{{ app_nav_url() }}" class="dropdown-item"><i class="fas fa-home mr-2"></i>Ir al dashboard</a>
                     <div class="dropdown-divider"></div>
-                    <form method="POST" action="{{ route('logout') }}">
+                    <form method="POST" action="{{ \App\Support\AppUrl::route('logout') }}">
                         @csrf
                         <button type="submit" class="dropdown-item"><i class="fas fa-sign-out-alt mr-2"></i>Cerrar sesion</button>
                     </form>
@@ -62,7 +62,7 @@
     </nav>
 
     <aside class="main-sidebar sidebar-dark-navy elevation-4">
-        <a href="{{ route('dashboard') }}" class="brand-link">
+        <a href="{{ app_nav_url() }}" class="brand-link">
             <img src="{{ app_media_url('images/defaults/logo.svg', 'images/defaults/logo.svg') }}" alt="Logo" class="brand-image-logo">
             <span class="brand-text">Edu<span>Notas</span></span>
         </a>
@@ -70,7 +70,7 @@
             <div class="user-panel mt-3 pb-3 mb-3 d-flex">
                 <div class="image"><img src="{{ $userAvatarUrl }}" alt="Avatar" class="user-avatar-sidebar"></div>
                 <div class="info">
-                    <a href="{{ route('dashboard') }}" class="d-block text-white">{{ trim(($user->nombres ?? '').' '.($user->apellidos ?? '')) ?: 'Usuario' }}</a>
+                    <a href="{{ app_nav_url() }}" class="d-block text-white">{{ trim(($user->nombres ?? '').' '.($user->apellidos ?? '')) ?: 'Usuario' }}</a>
                     <small class="text-light text-capitalize">{{ $user->role->nombre ?? 'Sin perfil' }}</small>
                 </div>
             </div>
@@ -115,7 +115,7 @@
                     <div class="col-sm-6"><h1 class="m-0">@yield('title')</h1></div>
                     <div class="col-sm-6">
                         <ol class="breadcrumb float-sm-right">
-                            <li class="breadcrumb-item"><a href="{{ route('dashboard') }}">Inicio</a></li>
+                            <li class="breadcrumb-item"><a href="{{ app_nav_url() }}">Inicio</a></li>
                             <li class="breadcrumb-item active">@yield('title')</li>
                         </ol>
                     </div>

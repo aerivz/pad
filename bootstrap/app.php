@@ -1,5 +1,6 @@
 <?php
 
+use App\Support\AppUrl;
 use Illuminate\Foundation\Application;
 use Illuminate\Foundation\Configuration\Exceptions;
 use Illuminate\Foundation\Configuration\Middleware;
@@ -18,8 +19,7 @@ return Application::configure(basePath: dirname(__DIR__))
     ->withExceptions(function (Exceptions $exceptions): void {
         $exceptions->render(function (\Symfony\Component\HttpKernel\Exception\HttpException $exception, \Illuminate\Http\Request $request) {
             if ($exception->getStatusCode() === 419) {
-                return redirect()
-                    ->route('login')
+                return redirect(AppUrl::route('login'))
                     ->with('status', 'La sesion expiro. Ingresa nuevamente para continuar.');
             }
 

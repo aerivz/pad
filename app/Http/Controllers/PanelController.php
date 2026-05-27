@@ -3,6 +3,7 @@
 namespace App\Http\Controllers;
 
 use Barryvdh\DomPDF\Facade\Pdf;
+use App\Models\Assignment;
 use App\Models\EmailDispatch;
 use App\Models\EmailTemplate;
 use App\Models\CollectorCategory;
@@ -71,6 +72,20 @@ class PanelController extends Controller
             'activeMenu' => 'subjects',
             'subjects' => $this->subjectsData(),
             'editSubject' => request()->filled('edit_subject') ? Subject::active()->find(request()->integer('edit_subject')) : null,
+        ]);
+    }
+
+    public function assignments(): View
+    {
+        return view('panel.assignments', [
+            ...$this->baseData(),
+            'activeMenu' => 'assignments',
+            'assignments' => $this->assignmentsData(),
+            'sectionsCatalog' => Section::active()->orderBy('anio_escolar', 'desc')->orderBy('grado')->orderBy('nombre')->get(),
+            'subjectsCatalog' => Subject::active()->orderBy('nombre')->get(),
+            'teachersCatalog' => Teacher::active()->orderBy('nombres')->orderBy('apellidos')->get(),
+            'assignmentYears' => $this->assignmentYears(),
+            'editAssignment' => request()->filled('edit_assignment') ? Assignment::active()->find(request()->integer('edit_assignment')) : null,
         ]);
     }
 
@@ -311,7 +326,9 @@ class PanelController extends Controller
             ->leftJoin('alumnos as a', function ($join) {
                 $join->on('a.seccion_id', '=', 's.id')->where('a.activo', true);
             })
-            ->leftJoin('asignaciones as ag', 'ag.seccion_id', '=', 's.id')
+            ->leftJoin('asignaciones as ag', function ($join) {
+                $join->on('ag.seccion_id', '=', 's.id')->where('ag.activo', true);
+            })
             ->leftJoinSub($finals, 'sf', function ($join) {
                 $join->on('sf.asignacion_id', '=', 'ag.id')->on('sf.alumno_id', '=', 'a.id');
             })
@@ -344,7 +361,9 @@ class PanelController extends Controller
     {
         return DB::table('profesores as p')
             ->where('p.activo', true)
-            ->leftJoin('asignaciones as ag', 'ag.profesor_id', '=', 'p.id')
+            ->leftJoin('asignaciones as ag', function ($join) {
+                $join->on('ag.profesor_id', '=', 'p.id')->where('ag.activo', true);
+            })
             ->leftJoin('materias as m', function ($join) {
                 $join->on('m.id', '=', 'ag.materia_id')->where('m.activo', true);
             })
@@ -363,7 +382,9 @@ class PanelController extends Controller
 
         return DB::table('materias as m')
             ->where('m.activo', true)
-            ->leftJoin('asignaciones as ag', 'ag.materia_id', '=', 'm.id')
+            ->leftJoin('asignaciones as ag', function ($join) {
+                $join->on('ag.materia_id', '=', 'm.id')->where('ag.activo', true);
+            })
             ->leftJoin('profesores as p', function ($join) {
                 $join->on('p.id', '=', 'ag.profesor_id')->where('p.activo', true);
             })
@@ -373,6 +394,27 @@ class PanelController extends Controller
             ->groupBy('m.id', 'm.nombre')
             ->selectRaw('m.id, m.nombre, COUNT(DISTINCT p.id) as total_profesores, COUNT(DISTINCT ag.seccion_id) as total_secciones, ROUND(AVG(sf.nota_final), 1) as promedio')
             ->orderBy('m.id')
+            ->get();
+    }
+
+    private function assignmentsData()
+    {
+        return DB::table('asignaciones as ag')
+            ->where('ag.activo', true)
+            ->join('secciones as s', function ($join) {
+                $join->on('s.id', '=', 'ag.seccion_id')->where('s.activo', true);
+            })
+            ->join('materias as m', function ($join) {
+                $join->on('m.id', '=', 'ag.materia_id')->where('m.activo', true);
+            })
+            ->join('profesores as p', function ($join) {
+                $join->on('p.id', '=', 'ag.profesor_id')->where('p.activo', true);
+            })
+            ->selectRaw("ag.id, ag.anio_escolar, CONCAT(s.grado, ' ', s.nombre) as seccion, m.nombre as materia, TRIM(CONCAT(p.nombres, ' ', p.apellidos)) as profesor")
+            ->orderByDesc('ag.anio_escolar')
+            ->orderBy('s.grado')
+            ->orderBy('s.nombre')
+            ->orderBy('m.nombre')
             ->get();
     }
 
@@ -504,6 +546,16 @@ class PanelController extends Controller
     private function academicYears()
     {
         return DB::table('asignaciones')
+            ->where('activo', true)
+            ->select('anio_escolar')
+            ->distinct()
+            ->orderByDesc('anio_escolar')
+            ->pluck('anio_escolar');
+    }
+
+    private function assignmentYears()
+    {
+        return Assignment::active()
             ->select('anio_escolar')
             ->distinct()
             ->orderByDesc('anio_escolar')
@@ -542,6 +594,7 @@ class PanelController extends Controller
         }
 
         $assignment = DB::table('asignaciones as ag')
+            ->where('ag.activo', true)
             ->join('materias as m', function ($join) {
                 $join->on('m.id', '=', 'ag.materia_id')->where('m.activo', true);
             })
@@ -640,7 +693,9 @@ class PanelController extends Controller
             ->join('alumnos as a', function ($join) {
                 $join->on('a.id', '=', 'sf.alumno_id')->where('a.activo', true);
             })
-            ->join('asignaciones as ag', 'ag.id', '=', 'sf.asignacion_id')
+            ->join('asignaciones as ag', function ($join) {
+                $join->on('ag.id', '=', 'sf.asignacion_id')->where('ag.activo', true);
+            })
             ->join('secciones as s', function ($join) {
                 $join->on('s.id', '=', 'a.seccion_id')->where('s.activo', true);
             })
@@ -705,6 +760,7 @@ class PanelController extends Controller
             ->get(['id', 'nombre', 'numero']);
 
         $assignments = DB::table('asignaciones as ag')
+            ->where('ag.activo', true)
             ->join('materias as m', function ($join) {
                 $join->on('m.id', '=', 'ag.materia_id')->where('m.activo', true);
             })
@@ -876,6 +932,7 @@ class PanelController extends Controller
     private function subjectsForFilters(?int $year, ?int $sectionId)
     {
         return DB::table('asignaciones as ag')
+            ->where('ag.activo', true)
             ->join('materias as m', function ($join) {
                 $join->on('m.id', '=', 'ag.materia_id')->where('m.activo', true);
             })
@@ -894,6 +951,7 @@ class PanelController extends Controller
         }
 
         return DB::table('asignaciones as ag')
+            ->where('ag.activo', true)
             ->join('materias as m', function ($join) {
                 $join->on('m.id', '=', 'ag.materia_id')->where('m.activo', true);
             })

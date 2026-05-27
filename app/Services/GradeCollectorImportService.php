@@ -22,6 +22,7 @@ class GradeCollectorImportService
     public function import(UploadedFile $file, int $assignmentId, int $trimesterId, bool $resetBeforeImport = false): array
     {
         $assignment = DB::table('asignaciones as ag')
+            ->where('ag.activo', true)
             ->join('secciones as s', 's.id', '=', 'ag.seccion_id')
             ->join('materias as m', 'm.id', '=', 'ag.materia_id')
             ->select('ag.id', 'ag.seccion_id', 'ag.anio_escolar', 's.grado', 's.nombre as seccion', 'm.nombre as materia')

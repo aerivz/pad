@@ -60,7 +60,7 @@
             <p>Ingresa con tu usuario para acceder segun tu perfil.</p>
         </div>
         <div class="card-body p-4">
-            <form method="POST" action="{{ route('login.store') }}">
+            <form method="POST" action="{{ \App\Support\AppUrl::route('login.store') }}">
                 @csrf
                 <div class="form-group">
                     <label>Usuario</label>

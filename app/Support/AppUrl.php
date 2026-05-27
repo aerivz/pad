@@ -25,7 +25,7 @@ class AppUrl
             return self::applicationRoot();
         }
 
-        return url($normalized);
+        return '/'.ltrim($normalized, '/');
     }
 
     public static function media(?string $path = null, string $default = 'images/defaults/image.svg'): string
@@ -47,11 +47,20 @@ class AppUrl
 
     public static function applicationRoot(): string
     {
-        if (Route::has('dashboard')) {
-            return route('dashboard');
+        $prefix = self::runtimePrefix();
+
+        return $prefix === '' ? '/' : '/'.$prefix;
+    }
+
+    public static function route(string $name, array $parameters = []): string
+    {
+        if (! Route::has($name)) {
+            return self::applicationRoot();
         }
 
-        return url('/');
+        $path = parse_url(route($name, $parameters, false), PHP_URL_PATH) ?? '/';
+
+        return self::menu($path);
     }
 
     public static function normalizeInternalPath(string $path): string
@@ -59,24 +68,33 @@ class AppUrl
         $path = self::stripHost($path);
         $path = preg_replace('#^/?public/#i', '', $path) ?? $path;
 
-        $appPrefix = trim(parse_url(Route::has('dashboard') ? route('dashboard', [], false) : '/', PHP_URL_PATH) ?? '', '/');
+        $canonicalPrefix = trim(parse_url(Route::has('dashboard') ? route('dashboard', [], false) : '/', PHP_URL_PATH) ?? '', '/');
+        $runtimePrefix = self::runtimePrefix();
         $trimmed = trim($path, '/');
 
-        if ($appPrefix !== '') {
-            if ($trimmed === $appPrefix) {
-                return $appPrefix;
+        if ($canonicalPrefix !== '' && $runtimePrefix !== $canonicalPrefix) {
+            if ($trimmed === $canonicalPrefix) {
+                $trimmed = '';
+            } elseif (Str::startsWith($trimmed, $canonicalPrefix.'/')) {
+                $trimmed = substr($trimmed, strlen($canonicalPrefix) + 1);
+            }
+        }
+
+        if ($runtimePrefix !== '') {
+            if ($trimmed === $runtimePrefix) {
+                return $runtimePrefix;
             }
 
-            if (Str::startsWith($trimmed, $appPrefix.'/')) {
+            if (Str::startsWith($trimmed, $runtimePrefix.'/')) {
                 return $trimmed;
             }
         }
 
         if ($trimmed === '') {
-            return $appPrefix;
+            return $runtimePrefix;
         }
 
-        return trim($appPrefix.'/'.$trimmed, '/');
+        return trim($runtimePrefix.'/'.$trimmed, '/');
     }
 
     public static function normalizeMediaPath(string $path): string
@@ -106,5 +124,16 @@ class AppUrl
         }
 
         return $path;
+    }
+
+    private static function runtimePrefix(): string
+    {
+        $segment = trim((string) request()->segment(1), '/');
+
+        if ($segment === 'pad') {
+            return 'pad';
+        }
+
+        return '';
     }
 }
