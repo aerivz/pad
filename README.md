@@ -200,6 +200,13 @@ El sistema ya cuenta con:
 - filtros rapidos en varias pantallas.
 - desactivacion logica en lugar de eliminacion fisica en mantenimientos clave.
 
+## Documentacion tecnica interna
+
+Para que otro Codex o desarrollador pueda entender rapido la base del sistema, revisa:
+
+- [Indice de desarrollo](C:/xampp/htdocs/Pad/docs/INDICE_DESARROLLO.md)
+- [Guia tecnica para Codex](C:/xampp/htdocs/Pad/docs/GUIA_TECNICA_CODEX.md)
+
 ## Notas de desarrollo
 
 - El archivo `.env` no se versiona.
