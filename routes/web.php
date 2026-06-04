@@ -47,6 +47,8 @@ Route::redirect('/pad/pad', '/pad/');
 Route::get('/media/{path}', [MediaController::class, 'show'])
     ->where('path', '.*')
     ->name('media.show');
+Route::get('/pad/media/{path}', [MediaController::class, 'show'])
+    ->where('path', '.*');
 
 Route::middleware('guest')->group(function () {
     Route::get('/login', [AuthController::class, 'create'])->name('login');

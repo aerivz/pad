@@ -3,6 +3,7 @@
 namespace App\Http\Controllers;
 
 use App\Models\Menu;
+use App\Support\AppUrl;
 use Illuminate\Http\RedirectResponse;
 use Illuminate\Http\Request;
 use Illuminate\Validation\Rule;
@@ -18,7 +19,7 @@ class MenuManagementController extends Controller
             'activo' => true,
         ]);
 
-        return redirect('/pad/menus')->with('status', 'Menu creado correctamente.');
+        return redirect(AppUrl::route('menus.index'))->with('status', 'Menu creado correctamente.');
     }
 
     public function update(Request $request, Menu $menu): RedirectResponse
@@ -27,14 +28,14 @@ class MenuManagementController extends Controller
 
         $menu->update($data);
 
-        return redirect('/pad/menus')->with('status', 'Menu actualizado correctamente.');
+        return redirect(AppUrl::route('menus.index'))->with('status', 'Menu actualizado correctamente.');
     }
 
     public function destroy(Menu $menu): RedirectResponse
     {
         $menu->update(['activo' => false]);
 
-        return redirect('/pad/menus')->with('status', 'Menu desactivado correctamente.');
+        return redirect(AppUrl::route('menus.index'))->with('status', 'Menu desactivado correctamente.');
     }
 
     private function validateMenu(Request $request, ?Menu $menu = null): array

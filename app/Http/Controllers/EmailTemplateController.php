@@ -3,6 +3,7 @@
 namespace App\Http\Controllers;
 
 use App\Models\EmailTemplate;
+use App\Support\AppUrl;
 use Illuminate\Http\RedirectResponse;
 use Illuminate\Http\Request;
 use Illuminate\Validation\Rule;
@@ -18,7 +19,7 @@ class EmailTemplateController extends Controller
             'activo' => true,
         ]);
 
-        return redirect('/pad/correos')->with('status', 'Plantilla creada correctamente.');
+        return redirect(AppUrl::route('emails.index'))->with('status', 'Plantilla creada correctamente.');
     }
 
     public function update(Request $request, EmailTemplate $template): RedirectResponse
@@ -27,14 +28,14 @@ class EmailTemplateController extends Controller
 
         $template->update($data);
 
-        return redirect('/pad/correos')->with('status', 'Plantilla actualizada correctamente.');
+        return redirect(AppUrl::route('emails.index'))->with('status', 'Plantilla actualizada correctamente.');
     }
 
     public function destroy(EmailTemplate $template): RedirectResponse
     {
         $template->update(['activo' => false]);
 
-        return redirect('/pad/correos')->with('status', 'Plantilla desactivada correctamente.');
+        return redirect(AppUrl::route('emails.index'))->with('status', 'Plantilla desactivada correctamente.');
     }
 
     private function validateTemplate(Request $request, ?EmailTemplate $template = null): array

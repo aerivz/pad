@@ -34,6 +34,30 @@
         .user-avatar-image { width: 36px; height: 36px; border-radius: 50%; object-fit: cover; }
         .user-avatar-sidebar { width: 34px; height: 34px; border-radius: 50%; object-fit: cover; }
         .action-cell .btn { margin-bottom: .25rem; }
+        .maint-card { border: 1px solid #d9e2f2; box-shadow: 0 10px 30px rgba(15, 23, 42, .06); }
+        .maint-toolbar { display: flex; flex-wrap: wrap; justify-content: space-between; gap: 1rem; align-items: center; }
+        .maint-toolbar-title { display: flex; align-items: center; gap: .65rem; font-weight: 700; color: #1f2d3d; }
+        .maint-toolbar-title i { color: #1d4ed8; }
+        .maint-actions { display: flex; flex-wrap: wrap; gap: .5rem; }
+        .maint-search-grid { display: grid; grid-template-columns: minmax(220px, 2fr) minmax(180px, 1fr) auto; gap: 1rem; align-items: end; }
+        .maint-tags { display: flex; flex-wrap: wrap; gap: .65rem; }
+        .maint-tag { background: #f1f5f9; border-radius: 999px; padding: .45rem .85rem; color: #475569; font-size: .84rem; font-weight: 600; }
+        .maint-table thead th { font-size: .84rem; text-transform: none; letter-spacing: .01em; color: #52627a; border-bottom-width: 1px; }
+        .maint-table tbody td { vertical-align: middle; }
+        .maint-avatar { width: 32px; height: 32px; border-radius: 50%; display: inline-flex; align-items: center; justify-content: center; background: #eff6ff; color: #2563eb; font-weight: 700; margin-right: .5rem; }
+        .maint-identity { display: flex; align-items: center; }
+        .maint-status { display: inline-flex; align-items: center; justify-content: center; min-width: 72px; padding: .15rem .55rem; border-radius: 999px; font-size: .74rem; font-weight: 700; }
+        .maint-status-active { background: #dcfce7; color: #166534; }
+        .maint-status-muted { background: #e2e8f0; color: #475569; }
+        .maint-actions-cell { white-space: nowrap; }
+        .maint-actions-cell form { display: inline-block; }
+        .maint-actions-cell .btn { border-radius: .5rem; }
+        .maint-form-card { border: 1px dashed #bfd2f0; background: linear-gradient(180deg, #f8fbff, #ffffff); }
+        .maint-form-card .card-header { background: transparent; }
+        .maint-modal-list { margin: 0; padding-left: 1rem; }
+        @media (max-width: 991.98px) {
+            .maint-search-grid { grid-template-columns: 1fr; }
+        }
     </style>
 </head>
 <body class="hold-transition sidebar-mini layout-fixed">
@@ -237,6 +261,23 @@
                 filter.addEventListener('input', applyFilters);
                 filter.addEventListener('change', applyFilters);
             });
+
+            const submitButton = toolbar.querySelector('[data-filter-submit]');
+            const resetButton = toolbar.querySelector('[data-filter-reset]');
+
+            if (submitButton) {
+                submitButton.addEventListener('click', applyFilters);
+            }
+
+            if (resetButton) {
+                resetButton.addEventListener('click', function () {
+                    filters.forEach(function (filter) {
+                        filter.value = '';
+                    });
+
+                    applyFilters();
+                });
+            }
 
             applyFilters();
         });

@@ -5,102 +5,37 @@
 @section('content')
 @php
     $emailStudentSectionId = collect($studentsForEmail)->firstWhere('id', (int) old('alumno_id', $editEmail->alumno_id ?? 0))->seccion_id ?? '';
+    $emailFormVisible = $editEmail !== null || old('padre_id') !== null || old('alumno_id') !== null || old('trimestre_id') !== null || old('estado') !== null;
+    $templateFormVisible = $editTemplate !== null || old('nombre') !== null || old('asunto') !== null || old('cuerpo_html') !== null;
 @endphp
-<div class="row">
-    <div class="col-lg-4">
-        <div class="card sticky-card">
-            <div class="card-header"><h3 class="card-title">{{ $editEmail ? 'Editar registro' : 'Nuevo registro de correo' }}</h3></div>
-            <div class="card-body">
-                <form method="POST" action="{{ $editEmail ? '/pad/correos/'.$editEmail->id : '/pad/correos' }}">
-                    @csrf
-                    @if ($editEmail) @method('PATCH') @endif
-                    <div class="form-group">
-                        <label>Plantilla</label>
-                        <select name="plantilla_id" class="form-control" required>
-                            @foreach ($templates as $template)
-                                <option value="{{ $template->id }}" @selected(old('plantilla_id', $editEmail->plantilla_id ?? '') == $template->id)>{{ $template->nombre }}</option>
-                            @endforeach
-                        </select>
-                    </div>
-                    <div class="form-group">
-                        <label>Familiar</label>
-                        <select name="padre_id" class="form-control" required>
-                            <option value="">Seleccione un familiar</option>
-                            @foreach ($familyMembers as $familyMember)
-                                <option value="{{ $familyMember->id }}" @selected(old('padre_id', $editEmail->padre_id ?? '') == $familyMember->id)>{{ $familyMember->nombres }} {{ $familyMember->apellidos }}</option>
-                            @endforeach
-                        </select>
-                    </div>
-                    <div class="form-group">
-                        <label>Seccion</label>
-                        <select class="form-control" id="email-section-filter">
-                            <option value="">Todas</option>
-                            @foreach ($studentSections as $section)
-                                <option value="{{ $section->id }}" @selected((string) $emailStudentSectionId === (string) $section->id)>{{ $section->grado }} {{ $section->nombre }}</option>
-                            @endforeach
-                        </select>
-                    </div>
-                    <div class="form-group">
-                        <label>Alumno</label>
-                        <select name="alumno_id" class="form-control" id="email-student-filter" required>
-                            <option value="">Seleccione un alumno</option>
-                            @foreach ($studentsForEmail as $student)
-                                <option value="{{ $student->id }}" data-section-id="{{ $student->seccion_id }}" @selected(old('alumno_id', $editEmail->alumno_id ?? '') == $student->id)>{{ $student->nombre_completo }}</option>
-                            @endforeach
-                        </select>
-                    </div>
-                    <div class="form-group">
-                        <label>Trimestre</label>
-                        <select name="trimestre_id" class="form-control" required>
-                            @foreach ($trimesters as $trimester)
-                                <option value="{{ $trimester->id }}" @selected(old('trimestre_id', $editEmail->trimestre_id ?? '') == $trimester->id)>{{ $trimester->nombre }}</option>
-                            @endforeach
-                        </select>
-                    </div>
-                    <div class="form-group">
-                        <label>Estado</label>
-                        <select name="estado" class="form-control" required>
-                            @foreach (['pendiente', 'enviado', 'fallido'] as $status)
-                                <option value="{{ $status }}" @selected(old('estado', $editEmail->estado ?? 'pendiente') === $status)>{{ ucfirst($status) }}</option>
-                            @endforeach
-                        </select>
-                    </div>
-                    <button class="btn btn-primary btn-sm">{{ $editEmail ? 'Guardar cambios' : 'Agregar registro' }}</button>
-                    @if ($editEmail)<a href="/pad/correos" class="btn btn-default btn-sm">Cancelar</a>@endif
-                </form>
-            </div>
-        </div>
 
-        <div class="card mt-3">
-            <div class="card-header"><h3 class="card-title">{{ $editTemplate ? 'Editar plantilla' : 'Nueva plantilla de correo' }}</h3></div>
-            <div class="card-body">
-                <form method="POST" action="{{ $editTemplate ? '/pad/correos/plantillas/'.$editTemplate->id : '/pad/correos/plantillas' }}">
-                    @csrf
-                    @if ($editTemplate) @method('PATCH') @endif
-                    <div class="form-group">
-                        <label>Nombre interno</label>
-                        <input type="text" name="nombre" class="form-control" value="{{ old('nombre', $editTemplate->nombre ?? '') }}" placeholder="reporte_trimestral" required>
-                    </div>
-                    <div class="form-group">
-                        <label>Asunto</label>
-                        <input type="text" name="asunto" class="form-control" value="{{ old('asunto', $editTemplate->asunto ?? '') }}" placeholder="Reporte de notas" required>
-                    </div>
-                    <div class="form-group">
-                        <label>Cuerpo HTML</label>
-                        <textarea name="cuerpo_html" rows="8" class="form-control" placeholder="<h1>Hola</h1><p>Contenido...</p>" required>{{ old('cuerpo_html', $editTemplate->cuerpo_html ?? '') }}</textarea>
-                        <small class="text-muted">Puedes usar HTML basico para asunto y contenido del mensaje.</small>
-                    </div>
-                    <button class="btn btn-success btn-sm">{{ $editTemplate ? 'Guardar plantilla' : 'Agregar plantilla' }}</button>
-                    @if ($editTemplate)<a href="/pad/correos" class="btn btn-default btn-sm">Cancelar</a>@endif
-                </form>
+<div class="card maint-card">
+    <div class="card-header border-0">
+        <div class="maint-toolbar">
+            <div class="maint-toolbar-title">
+                <i class="fas fa-envelope"></i>
+                <span>Gestion de correos</span>
+            </div>
+            <div class="maint-actions">
+                <button class="btn btn-primary btn-sm" type="button" data-toggle="modal" data-target="#emailFormModal">
+                    <i class="fas fa-plus mr-1"></i>{{ $editEmail ? 'Editar correo' : 'Nuevo correo' }}
+                </button>
+                <button class="btn btn-success btn-sm" type="button" data-toggle="modal" data-target="#emailTemplateModal">
+                    <i class="fas fa-file-alt mr-1"></i>{{ $editTemplate ? 'Editar plantilla' : 'Nueva plantilla' }}
+                </button>
             </div>
         </div>
     </div>
-    <div class="col-lg-8">
-        <div class="card">
-            <div class="card-header"><h3 class="card-title">Plantillas configuradas</h3></div>
+</div>
+
+<div class="row">
+    <div class="col-lg-5">
+        <div class="card maint-card">
+            <div class="card-header border-0">
+                <h3 class="card-title">Plantillas configuradas</h3>
+            </div>
             <div class="card-body table-responsive p-0">
-                <table class="table table-hover">
+                <table class="table table-hover maint-table">
                     <thead class="bg-light"><tr><th>#</th><th>Nombre</th><th>Asunto</th><th>Vista previa</th><th>Acciones</th></tr></thead>
                     <tbody>
                     @forelse ($templateCatalog as $template)
@@ -109,9 +44,9 @@
                             <td><strong>{{ $template->nombre }}</strong></td>
                             <td>{{ $template->asunto }}</td>
                             <td><div style="max-width:320px; white-space:nowrap; overflow:hidden; text-overflow:ellipsis;">{{ strip_tags($template->cuerpo_html) }}</div></td>
-                            <td class="action-cell">
-                                <a href="/pad/correos?edit_template={{ $template->id }}" class="btn btn-xs btn-warning">Editar</a>
-                                <form method="POST" action="{{ '/pad/correos/plantillas/'.$template->id }}" data-swal-confirm="true" data-swal-title="Desactivar plantilla" data-swal-text="La plantilla ya no aparecera en nuevos envios, pero no se eliminara fisicamente." data-swal-confirm-label="Si, desactivar">@csrf @method('DELETE')<button class="btn btn-xs btn-danger">Desactivar</button></form>
+                            <td class="maint-actions-cell">
+                                <a href="{{ \App\Support\AppUrl::route('emails.index') }}?edit_template={{ $template->id }}" class="btn btn-xs btn-warning"><i class="fas fa-pen"></i></a>
+                                <form method="POST" action="{{ \App\Support\AppUrl::route('emails.templates.destroy', ['template' => $template->id]) }}" data-swal-confirm="true" data-swal-title="Desactivar plantilla" data-swal-text="La plantilla ya no aparecera en nuevos envios, pero no se eliminara fisicamente." data-swal-confirm-label="Si, desactivar">@csrf @method('DELETE')<button class="btn btn-xs btn-danger"><i class="fas fa-user-slash"></i></button></form>
                             </td>
                         </tr>
                     @empty
@@ -121,8 +56,9 @@
                 </table>
             </div>
         </div>
-
-        <div class="card">
+    </div>
+    <div class="col-lg-7">
+        <div class="card maint-card">
             <div class="card-header">
                 <h3 class="card-title">Historial de correos</h3>
                 <div class="card-tools w-100 mt-2 mt-md-0">
@@ -153,7 +89,7 @@
                 </div>
             </div>
             <div class="card-body table-responsive p-0">
-                <table class="table table-hover" id="emails-table">
+                <table class="table table-hover maint-table" id="emails-table">
                     <thead class="bg-light"><tr><th>#</th><th>Familiar</th><th>Alumno</th><th>Plantilla</th><th>Trimestre</th><th>Estado</th><th>Acciones</th></tr></thead>
                     <tbody>
                     @forelse ($emails as $email)
@@ -172,9 +108,9 @@
                                     <span class="badge badge-danger">Fallido</span>
                                 @endif
                             </td>
-                            <td class="action-cell">
-                                <a href="/pad/correos?edit_email={{ $email->id }}" class="btn btn-xs btn-warning">Editar</a>
-                                <form method="POST" action="{{ '/pad/correos/'.$email->id }}" data-swal-confirm="true" data-swal-title="Desactivar registro de correo" data-swal-text="El historial quedara oculto del mantenimiento, pero no se eliminara fisicamente." data-swal-confirm-label="Si, desactivar">@csrf @method('DELETE')<button class="btn btn-xs btn-danger">Desactivar</button></form>
+                            <td class="maint-actions-cell">
+                                <a href="{{ \App\Support\AppUrl::route('emails.index') }}?edit_email={{ $email->id }}" class="btn btn-xs btn-warning"><i class="fas fa-pen"></i></a>
+                                <form method="POST" action="{{ \App\Support\AppUrl::route('emails.destroy', ['dispatch' => $email->id]) }}" data-swal-confirm="true" data-swal-title="Desactivar registro de correo" data-swal-text="El historial quedara oculto del mantenimiento, pero no se eliminara fisicamente." data-swal-confirm-label="Si, desactivar">@csrf @method('DELETE')<button class="btn btn-xs btn-danger"><i class="fas fa-user-slash"></i></button></form>
                             </td>
                         </tr>
                     @empty
@@ -191,11 +127,123 @@
         </div>
     </div>
 </div>
+
+<div class="modal fade" id="emailFormModal" tabindex="-1" role="dialog" aria-hidden="true">
+    <div class="modal-dialog modal-lg modal-dialog-centered" role="document">
+        <div class="modal-content">
+            <div class="modal-header">
+                <h5 class="modal-title">{{ $editEmail ? 'Editar registro de correo' : 'Nuevo registro de correo' }}</h5>
+                <button type="button" class="close" data-dismiss="modal"><span>&times;</span></button>
+            </div>
+            <div class="modal-body">
+                <form method="POST" action="{{ $editEmail ? \App\Support\AppUrl::route('emails.update', ['dispatch' => $editEmail->id]) : \App\Support\AppUrl::route('emails.store') }}">
+                    @csrf
+                    @if ($editEmail) @method('PATCH') @endif
+                    <div class="row">
+                        <div class="col-md-6 form-group">
+                            <label>Plantilla</label>
+                            <select name="plantilla_id" class="form-control" required>
+                                @foreach ($templates as $template)
+                                    <option value="{{ $template->id }}" @selected(old('plantilla_id', $editEmail->plantilla_id ?? '') == $template->id)>{{ $template->nombre }}</option>
+                                @endforeach
+                            </select>
+                        </div>
+                        <div class="col-md-6 form-group">
+                            <label>Familiar</label>
+                            <select name="padre_id" class="form-control" required>
+                                <option value="">Seleccione un familiar</option>
+                                @foreach ($familyMembers as $familyMember)
+                                    <option value="{{ $familyMember->id }}" @selected(old('padre_id', $editEmail->padre_id ?? '') == $familyMember->id)>{{ $familyMember->nombres }} {{ $familyMember->apellidos }}</option>
+                                @endforeach
+                            </select>
+                        </div>
+                        <div class="col-md-6 form-group">
+                            <label>Seccion</label>
+                            <select class="form-control" id="email-section-filter">
+                                <option value="">Todas</option>
+                                @foreach ($studentSections as $section)
+                                    <option value="{{ $section->id }}" @selected((string) $emailStudentSectionId === (string) $section->id)>{{ $section->grado }} {{ $section->nombre }}</option>
+                                @endforeach
+                            </select>
+                        </div>
+                        <div class="col-md-6 form-group">
+                            <label>Alumno</label>
+                            <select name="alumno_id" class="form-control" id="email-student-filter" required>
+                                <option value="">Seleccione un alumno</option>
+                                @foreach ($studentsForEmail as $student)
+                                    <option value="{{ $student->id }}" data-section-id="{{ $student->seccion_id }}" @selected(old('alumno_id', $editEmail->alumno_id ?? '') == $student->id)>{{ $student->nombre_completo }}</option>
+                                @endforeach
+                            </select>
+                        </div>
+                        <div class="col-md-6 form-group">
+                            <label>Trimestre</label>
+                            <select name="trimestre_id" class="form-control" required>
+                                @foreach ($trimesters as $trimester)
+                                    <option value="{{ $trimester->id }}" @selected(old('trimestre_id', $editEmail->trimestre_id ?? '') == $trimester->id)>{{ $trimester->nombre }}</option>
+                                @endforeach
+                            </select>
+                        </div>
+                        <div class="col-md-6 form-group">
+                            <label>Estado</label>
+                            <select name="estado" class="form-control" required>
+                                @foreach (['pendiente', 'enviado', 'fallido'] as $status)
+                                    <option value="{{ $status }}" @selected(old('estado', $editEmail->estado ?? 'pendiente') === $status)>{{ ucfirst($status) }}</option>
+                                @endforeach
+                            </select>
+                        </div>
+                    </div>
+                    <button class="btn btn-primary btn-sm">{{ $editEmail ? 'Guardar cambios' : 'Agregar registro' }}</button>
+                    @if ($editEmail)<a href="{{ \App\Support\AppUrl::route('emails.index') }}" class="btn btn-default btn-sm">Cancelar</a>@endif
+                </form>
+            </div>
+        </div>
+    </div>
+</div>
+
+<div class="modal fade" id="emailTemplateModal" tabindex="-1" role="dialog" aria-hidden="true">
+    <div class="modal-dialog modal-lg modal-dialog-centered" role="document">
+        <div class="modal-content">
+            <div class="modal-header">
+                <h5 class="modal-title">{{ $editTemplate ? 'Editar plantilla de correo' : 'Nueva plantilla de correo' }}</h5>
+                <button type="button" class="close" data-dismiss="modal"><span>&times;</span></button>
+            </div>
+            <div class="modal-body">
+                <form method="POST" action="{{ $editTemplate ? \App\Support\AppUrl::route('emails.templates.update', ['template' => $editTemplate->id]) : \App\Support\AppUrl::route('emails.templates.store') }}">
+                    @csrf
+                    @if ($editTemplate) @method('PATCH') @endif
+                    <div class="form-group">
+                        <label>Nombre interno</label>
+                        <input type="text" name="nombre" class="form-control" value="{{ old('nombre', $editTemplate->nombre ?? '') }}" placeholder="reporte_trimestral" required>
+                    </div>
+                    <div class="form-group">
+                        <label>Asunto</label>
+                        <input type="text" name="asunto" class="form-control" value="{{ old('asunto', $editTemplate->asunto ?? '') }}" placeholder="Reporte de notas" required>
+                    </div>
+                    <div class="form-group mb-2">
+                        <label>Cuerpo HTML</label>
+                        <textarea name="cuerpo_html" rows="8" class="form-control" placeholder="<h1>Hola</h1><p>Contenido...</p>" required>{{ old('cuerpo_html', $editTemplate->cuerpo_html ?? '') }}</textarea>
+                        <small class="text-muted">Puedes usar HTML basico para asunto y contenido del mensaje.</small>
+                    </div>
+                    <button class="btn btn-success btn-sm">{{ $editTemplate ? 'Guardar plantilla' : 'Agregar plantilla' }}</button>
+                    @if ($editTemplate)<a href="{{ \App\Support\AppUrl::route('emails.index') }}" class="btn btn-default btn-sm">Cancelar</a>@endif
+                </form>
+            </div>
+        </div>
+    </div>
+</div>
 @endsection
 
 @push('scripts')
 <script>
     document.addEventListener('DOMContentLoaded', function () {
+        @if ($emailFormVisible)
+        $('#emailFormModal').modal('show');
+        @endif
+
+        @if ($templateFormVisible)
+        $('#emailTemplateModal').modal('show');
+        @endif
+
         const sectionSelect = document.getElementById('email-section-filter');
         const studentSelect = document.getElementById('email-student-filter');
 

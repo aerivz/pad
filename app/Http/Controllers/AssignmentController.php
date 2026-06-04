@@ -52,16 +52,25 @@ class AssignmentController extends Controller
 
     private function ensureUniqueAssignment(array $data, ?int $ignoreId = null): void
     {
-        $exists = Assignment::active()
+        $baseQuery = Assignment::active()
             ->where('seccion_id', $data['seccion_id'])
             ->where('materia_id', $data['materia_id'])
             ->where('anio_escolar', $data['anio_escolar'])
-            ->when($ignoreId, fn ($query) => $query->where('id', '!=', $ignoreId))
+            ->when($ignoreId, fn ($query) => $query->where('id', '!=', $ignoreId));
+
+        $sameTeacherExists = (clone $baseQuery)
+            ->where('profesor_id', $data['profesor_id'])
             ->exists();
 
-        if ($exists) {
+        if ($sameTeacherExists) {
             throw ValidationException::withMessages([
-                'materia_id' => 'Ya existe una asignacion activa para esa materia, seccion y año lectivo.',
+                'profesor_id' => 'Ese profesor ya esta asignado a la misma materia y seccion en ese ano lectivo.',
+            ]);
+        }
+
+        if ((clone $baseQuery)->exists()) {
+            throw ValidationException::withMessages([
+                'materia_id' => 'Ya existe una asignacion activa para esa materia y seccion en ese ano lectivo.',
             ]);
         }
     }

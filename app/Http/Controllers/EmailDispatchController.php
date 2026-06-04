@@ -3,6 +3,7 @@
 namespace App\Http\Controllers;
 
 use App\Models\EmailDispatch;
+use App\Support\AppUrl;
 use Illuminate\Http\RedirectResponse;
 use Illuminate\Http\Request;
 use Illuminate\Support\Facades\DB;
@@ -19,7 +20,7 @@ class EmailDispatchController extends Controller
             'activo' => true,
         ]);
 
-        return redirect('/pad/correos')->with('status', 'Registro de correo creado correctamente.');
+        return redirect(AppUrl::route('emails.index'))->with('status', 'Registro de correo creado correctamente.');
     }
 
     public function update(Request $request, EmailDispatch $dispatch): RedirectResponse
@@ -28,14 +29,14 @@ class EmailDispatchController extends Controller
 
         $dispatch->update($data);
 
-        return redirect('/pad/correos')->with('status', 'Registro de correo actualizado correctamente.');
+        return redirect(AppUrl::route('emails.index'))->with('status', 'Registro de correo actualizado correctamente.');
     }
 
     public function destroy(EmailDispatch $dispatch): RedirectResponse
     {
         $dispatch->update(['activo' => false]);
 
-        return redirect('/pad/correos')->with('status', 'Registro de correo desactivado correctamente.');
+        return redirect(AppUrl::route('emails.index'))->with('status', 'Registro de correo desactivado correctamente.');
     }
 
     private function validateDispatch(Request $request): array
