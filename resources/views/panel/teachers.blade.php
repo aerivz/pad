@@ -113,7 +113,20 @@
                         <div class="col-md-3 form-group"><label>Nombres</label><input name="nombres" class="form-control" value="{{ old('nombres', $editTeacher->nombres ?? '') }}" required></div>
                         <div class="col-md-3 form-group"><label>Apellidos</label><input name="apellidos" class="form-control" value="{{ old('apellidos', $editTeacher->apellidos ?? '') }}" required></div>
                         <div class="col-md-3 form-group"><label>Correo</label><input type="email" name="email" class="form-control" value="{{ old('email', $editTeacher->email ?? '') }}" required></div>
-                        <div class="col-md-3 form-group"><label>Especialidad</label><input name="especialidad" class="form-control" value="{{ old('especialidad', $editTeacher->especialidad ?? '') }}"></div>
+                        <div class="col-md-3 form-group">
+                            @php($selectedSpecialty = old('especialidad', $editTeacher->especialidad ?? ''))
+                            @php($specialtyList = collect($subjectsCatalog ?? [])->pluck('nombre')->filter()->unique())
+                            @if ($selectedSpecialty && ! $specialtyList->contains($selectedSpecialty))
+                                @php($specialtyList = $specialtyList->push($selectedSpecialty))
+                            @endif
+                            <label>Especialidad</label>
+                            <select name="especialidad" class="form-control">
+                                <option value="">Sin especialidad</option>
+                                @foreach ($specialtyList->sort()->values() as $specialtyOption)
+                                    <option value="{{ $specialtyOption }}" @selected($selectedSpecialty === $specialtyOption)>{{ $specialtyOption }}</option>
+                                @endforeach
+                            </select>
+                        </div>
                     </div>
                     <button class="btn btn-primary btn-sm">{{ $editTeacher ? 'Guardar cambios' : 'Agregar profesor' }}</button>
                     @if ($editTeacher)<a href="{{ \App\Support\AppUrl::route('teachers.index') }}" class="btn btn-default btn-sm">Cancelar</a>@endif

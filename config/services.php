@@ -35,4 +35,11 @@ return [
         ],
     ],
 
+    'telegram_errors' => [
+        'enabled' => env('TELEGRAM_ERRORS_ENABLED', false),
+        'bot_token' => env('TELEGRAM_ERRORS_BOT_TOKEN'),
+        'chat_id' => env('TELEGRAM_ERRORS_CHAT_ID'),
+        'timeout' => env('TELEGRAM_ERRORS_TIMEOUT', 5),
+    ],
+
 ];

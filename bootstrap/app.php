@@ -1,5 +1,6 @@
 <?php
 
+use App\Services\TelegramErrorNotifier;
 use App\Support\AppUrl;
 use Illuminate\Foundation\Application;
 use Illuminate\Foundation\Configuration\Exceptions;
@@ -17,6 +18,10 @@ return Application::configure(basePath: dirname(__DIR__))
         ]);
     })
     ->withExceptions(function (Exceptions $exceptions): void {
+        $exceptions->report(function (\Throwable $exception) {
+            app(TelegramErrorNotifier::class)->send($exception, request());
+        });
+
         $exceptions->render(function (\Symfony\Component\HttpKernel\Exception\HttpException $exception, \Illuminate\Http\Request $request) {
             if ($exception->getStatusCode() === 419) {
                 return redirect(AppUrl::route('login'))

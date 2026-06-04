@@ -61,6 +61,7 @@ class PanelController extends Controller
             ...$this->baseData(),
             'activeMenu' => 'teachers',
             'teachers' => $this->teachersData(),
+            'subjectsCatalog' => Subject::active()->orderBy('nombre')->get(),
             'editTeacher' => request()->filled('edit_teacher') ? Teacher::active()->find(request()->integer('edit_teacher')) : null,
         ]);
     }

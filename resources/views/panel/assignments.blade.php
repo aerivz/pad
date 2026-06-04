@@ -126,9 +126,10 @@
                             <select name="profesor_id" class="form-control" required>
                                 <option value="">Seleccione un profesor</option>
                                 @foreach ($teachersCatalog as $teacher)
-                                    <option value="{{ $teacher->id }}" @selected(old('profesor_id', $editAssignment->profesor_id ?? '') == $teacher->id)>{{ $teacher->nombres }} {{ $teacher->apellidos }}{{ $teacher->especialidad ? ' | '.$teacher->especialidad : '' }}</option>
+                                    <option value="{{ $teacher->id }}" @selected(old('profesor_id', $editAssignment->profesor_id ?? '') == $teacher->id)>{{ $teacher->nombres }} {{ $teacher->apellidos }}</option>
                                 @endforeach
                             </select>
+                            <small class="text-muted">Si necesitas validar afinidad, la especialidad del docente se administra en el catalogo de profesores.</small>
                         </div>
                     </div>
                     <button class="btn btn-primary btn-sm">{{ $editAssignment ? 'Guardar cambios' : 'Agregar asignacion' }}</button>

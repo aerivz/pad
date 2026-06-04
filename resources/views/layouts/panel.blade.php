@@ -42,8 +42,14 @@
         .maint-search-grid { display: grid; grid-template-columns: minmax(220px, 2fr) minmax(180px, 1fr) auto; gap: 1rem; align-items: end; }
         .maint-tags { display: flex; flex-wrap: wrap; gap: .65rem; }
         .maint-tag { background: #f1f5f9; border-radius: 999px; padding: .45rem .85rem; color: #475569; font-size: .84rem; font-weight: 600; }
-        .maint-table thead th { font-size: .84rem; text-transform: none; letter-spacing: .01em; color: #52627a; border-bottom-width: 1px; }
-        .maint-table tbody td { vertical-align: middle; }
+        .maint-card .table-responsive { border: 1px solid #dbe3ee; border-radius: 14px; overflow: hidden; background: #fff; }
+        .maint-table { margin-bottom: 0; border-collapse: separate; border-spacing: 0; }
+        .maint-table thead th { background: #f8fafc; font-size: .84rem; text-transform: none; letter-spacing: .01em; color: #52627a; border-top: 0; border-bottom: 1px solid #dbe3ee; padding: .95rem .9rem; font-weight: 700; }
+        .maint-table thead th:first-child { border-top-left-radius: 14px; }
+        .maint-table thead th:last-child { border-top-right-radius: 14px; }
+        .maint-table tbody td { vertical-align: middle; padding: .9rem .9rem; border-top: 0; border-bottom: 1px solid #e7edf5; color: #243447; background: #fff; }
+        .maint-table tbody tr:last-child td { border-bottom: 0; }
+        .maint-table tbody tr:hover td { background: #fbfdff; }
         .maint-avatar { width: 32px; height: 32px; border-radius: 50%; display: inline-flex; align-items: center; justify-content: center; background: #eff6ff; color: #2563eb; font-weight: 700; margin-right: .5rem; }
         .maint-identity { display: flex; align-items: center; }
         .maint-status { display: inline-flex; align-items: center; justify-content: center; min-width: 72px; padding: .15rem .55rem; border-radius: 999px; font-size: .74rem; font-weight: 700; }
