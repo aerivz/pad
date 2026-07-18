@@ -28,6 +28,10 @@
 @endpush
 
 @section('content')
+@php
+    $selectedTemplateKey = old('template_key', $selectedAssignment->plantilla_colector ?? $categoryTemplates->keys()->first());
+    $selectedTemplate = $selectedTemplateKey ? $categoryTemplates->get($selectedTemplateKey) : null;
+@endphp
 <div class="card">
     <div class="card-body">
         <form method="GET" action="/pad/notas" class="row">
@@ -88,6 +92,8 @@
             <div class="action-toolbar">
                 <a href="/pad/notas/plantillas/colector" class="btn btn-outline-success btn-sm"><i class="fas fa-file-csv mr-1"></i>Descargar plantilla</a>
                 <a href="/pad/notas/plantillas/normalizado" class="btn btn-outline-info btn-sm"><i class="fas fa-file-download mr-1"></i>Descargar activos</a>
+                <a href="{{ \App\Support\AppUrl::route('collector-templates.index') }}" class="btn btn-outline-dark btn-sm"><i class="fas fa-cogs mr-1"></i>Plantillas de notas</a>
+                <button type="button" class="btn btn-outline-secondary btn-sm" data-toggle="modal" data-target="#templateApplyModal"><i class="fas fa-layer-group mr-1"></i>{{ $selectedTemplate ? 'Aplicar plantilla de materia' : 'Aplicar plantilla' }}</button>
                 <button type="button" class="btn btn-outline-warning btn-sm" data-toggle="modal" data-target="#categoriesModal"><i class="fas fa-sync-alt mr-1"></i>Categorias configuradas</button>
                 <button type="button" class="btn btn-outline-primary btn-sm" data-toggle="modal" data-target="#importModal"><i class="fas fa-file-import mr-1"></i>Importacion masiva</button>
                 <button type="button" class="btn btn-success btn-sm" data-toggle="modal" data-target="#categoryModal"><i class="fas fa-plus mr-1"></i>{{ $editCategory ? 'Editar categoria' : 'Nueva categoria' }}</button>
@@ -102,7 +108,25 @@
         </div>
         <div class="card-body">
             @if ($categories->count() === 0)
-                <div class="alert alert-info m-3">Crea categorias primero. Luego podras capturar notas y conducta por alumno.</div>
+                @if ($selectedTemplate)
+                    <div class="alert alert-info m-3 d-flex justify-content-between align-items-center flex-wrap" style="gap: .75rem;">
+                        <div>
+                            Materia tiene plantilla <strong>{{ $selectedTemplate['name'] }}</strong>, pero aun no se ha aplicado a este trimestre.
+                            Presiona boton para crear categorias y completar 100%.
+                        </div>
+                        <form method="POST" action="/pad/notas/plantillas/aplicar" class="mb-0">
+                            @csrf
+                            <input type="hidden" name="asignacion_id" value="{{ $selectedAssignmentId }}">
+                            <input type="hidden" name="trimestre_id" value="{{ $selectedTrimesterId }}">
+                            <input type="hidden" name="template_key" value="{{ $selectedTemplateKey }}">
+                            <button class="btn btn-secondary btn-sm">
+                                <i class="fas fa-layer-group mr-1"></i>Aplicar {{ $selectedTemplate['name'] }}
+                            </button>
+                        </form>
+                    </div>
+                @else
+                    <div class="alert alert-info m-3">Crea categorias primero. Luego podras capturar notas y conducta por alumno.</div>
+                @endif
             @else
                 <form method="POST" action="/pad/notas/calificaciones">
                     @csrf
@@ -215,6 +239,57 @@
         </div>
     </div>
 @endif
+
+<div class="modal fade" id="templateApplyModal" tabindex="-1" aria-hidden="true">
+    <div class="modal-dialog modal-lg modal-dialog-scrollable">
+        <div class="modal-content">
+            <div class="modal-header">
+                <h5 class="modal-title">Aplicar plantilla de categorias</h5>
+                <button type="button" class="close" data-dismiss="modal" aria-label="Cerrar">
+                    <span aria-hidden="true">&times;</span>
+                </button>
+            </div>
+            <div class="modal-body">
+                <form method="POST" action="/pad/notas/plantillas/aplicar">
+                    @csrf
+                    <input type="hidden" name="asignacion_id" value="{{ $selectedAssignmentId }}">
+                    <input type="hidden" name="trimestre_id" value="{{ $selectedTrimesterId }}">
+
+                    <div class="form-group">
+                        <label>Plantilla</label>
+                        <select name="template_key" class="form-control" required>
+                            @foreach ($categoryTemplates as $templateKey => $template)
+                                <option value="{{ $templateKey }}" @selected($selectedTemplateKey === $templateKey)>{{ $template['name'] }}</option>
+                            @endforeach
+                        </select>
+                    </div>
+
+                    @foreach ($categoryTemplates as $templateKey => $template)
+                        <div class="config-note mb-3 template-preview-block" data-template-preview="{{ $templateKey }}" style="{{ $selectedTemplateKey === $templateKey ? '' : 'display:none;' }}">
+                            <div class="font-weight-bold mb-1">{{ $template['name'] }}</div>
+                            <div class="text-muted small mb-2">{{ $template['description'] ?? 'Sin descripcion.' }}</div>
+                            <ul class="mb-0 pl-3">
+                                @foreach ($template['categories'] as $templateCategory)
+                                    <li>{{ $templateCategory['nombre'] }} | {{ rtrim(rtrim(number_format($templateCategory['porcentaje'], 2), '0'), '.') }}% | {{ $templateCategory['tipo_calculo'] }}</li>
+                                @endforeach
+                            </ul>
+                        </div>
+                    @endforeach
+
+                    <div class="form-group form-check">
+                        <input type="checkbox" class="form-check-input" id="reemplazar_existentes" name="reemplazar_existentes" value="1" @checked(old('reemplazar_existentes'))>
+                        <label class="form-check-label" for="reemplazar_existentes">Reemplazar categorias activas existentes del trimestre seleccionado</label>
+                    </div>
+
+                    <div class="text-right">
+                        <button type="button" class="btn btn-default btn-sm" data-dismiss="modal">Cancelar</button>
+                        <button class="btn btn-secondary btn-sm">Aplicar plantilla</button>
+                    </div>
+                </form>
+            </div>
+        </div>
+    </div>
+</div>
 
 <div class="modal fade" id="categoryModal" tabindex="-1" aria-hidden="true">
     <div class="modal-dialog modal-lg modal-dialog-scrollable">
@@ -344,6 +419,23 @@
 @push('scripts')
 <script>
     document.addEventListener('DOMContentLoaded', function () {
+        const templateSelect = document.querySelector('select[name="template_key"]');
+
+        const syncTemplatePreview = function () {
+            if (!templateSelect) {
+                return;
+            }
+
+            document.querySelectorAll('[data-template-preview]').forEach(function (preview) {
+                preview.style.display = preview.dataset.templatePreview === templateSelect.value ? '' : 'none';
+            });
+        };
+
+        if (templateSelect) {
+            templateSelect.addEventListener('change', syncTemplatePreview);
+            syncTemplatePreview();
+        }
+
         const syncCollectorHeights = function () {
             const fixedTable = document.getElementById('collector-fixed-table');
             const scrollTable = document.getElementById('collector-scroll-table');

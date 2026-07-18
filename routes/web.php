@@ -2,6 +2,7 @@
 
 use App\Http\Controllers\AuthController;
 use App\Http\Controllers\AssignmentController;
+use App\Http\Controllers\CollectorTemplateController;
 use App\Http\Controllers\EmailDispatchController;
 use App\Http\Controllers\EmailTemplateController;
 use App\Http\Controllers\EvaluationController;
@@ -82,6 +83,10 @@ Route::middleware('auth')->group(function () {
     Route::post('/materias', [SubjectController::class, 'store'])->middleware('menu.access:subjects')->name('subjects.store');
     Route::patch('/materias/{subject}', [SubjectController::class, 'update'])->middleware('menu.access:subjects')->name('subjects.update');
     Route::delete('/materias/{subject}', [SubjectController::class, 'destroy'])->middleware('menu.access:subjects')->name('subjects.destroy');
+    Route::get('/plantillas-colector', [PanelController::class, 'collectorTemplates'])->middleware('menu.access:collector_templates')->name('collector-templates.index');
+    Route::post('/plantillas-colector', [CollectorTemplateController::class, 'store'])->middleware('menu.access:collector_templates')->name('collector-templates.store');
+    Route::patch('/plantillas-colector/{template}', [CollectorTemplateController::class, 'update'])->middleware('menu.access:collector_templates')->name('collector-templates.update');
+    Route::delete('/plantillas-colector/{template}', [CollectorTemplateController::class, 'destroy'])->middleware('menu.access:collector_templates')->name('collector-templates.destroy');
 
     Route::get('/asignaciones', [PanelController::class, 'assignments'])->middleware('menu.access:assignments')->name('assignments.index');
     Route::post('/asignaciones', [AssignmentController::class, 'store'])->middleware('menu.access:assignments')->name('assignments.store');
@@ -101,6 +106,7 @@ Route::middleware('auth')->group(function () {
     Route::post('/notas/calificaciones', [EvaluationController::class, 'syncScores'])->middleware('menu.access:gradebook')->name('gradebook.scores.sync');
     Route::post('/notas/importar', [EvaluationController::class, 'import'])->middleware('menu.access:gradebook')->name('gradebook.import');
     Route::get('/notas/plantillas/{template}', [EvaluationController::class, 'template'])->middleware('menu.access:gradebook')->name('gradebook.templates');
+    Route::post('/notas/plantillas/aplicar', [EvaluationController::class, 'applyTemplate'])->middleware('menu.access:gradebook')->name('gradebook.templates.apply');
 
     Route::get('/report-card', [PanelController::class, 'reportCard'])->middleware('menu.access:reportcard')->name('reportcard.index');
     Route::get('/report-card/pdf', [PanelController::class, 'reportCardPdf'])->middleware('menu.access:reportcard')->name('reportcard.pdf');
@@ -158,6 +164,10 @@ Route::prefix('pad')->middleware('auth')->group(function () {
     Route::post('/materias', [SubjectController::class, 'store'])->middleware('menu.access:subjects');
     Route::patch('/materias/{subject}', [SubjectController::class, 'update'])->middleware('menu.access:subjects');
     Route::delete('/materias/{subject}', [SubjectController::class, 'destroy'])->middleware('menu.access:subjects');
+    Route::get('/plantillas-colector', [PanelController::class, 'collectorTemplates'])->middleware('menu.access:collector_templates');
+    Route::post('/plantillas-colector', [CollectorTemplateController::class, 'store'])->middleware('menu.access:collector_templates');
+    Route::patch('/plantillas-colector/{template}', [CollectorTemplateController::class, 'update'])->middleware('menu.access:collector_templates');
+    Route::delete('/plantillas-colector/{template}', [CollectorTemplateController::class, 'destroy'])->middleware('menu.access:collector_templates');
 
     Route::get('/asignaciones', [PanelController::class, 'assignments'])->middleware('menu.access:assignments');
     Route::post('/asignaciones', [AssignmentController::class, 'store'])->middleware('menu.access:assignments');
@@ -177,6 +187,7 @@ Route::prefix('pad')->middleware('auth')->group(function () {
     Route::post('/notas/calificaciones', [EvaluationController::class, 'syncScores'])->middleware('menu.access:gradebook');
     Route::post('/notas/importar', [EvaluationController::class, 'import'])->middleware('menu.access:gradebook');
     Route::get('/notas/plantillas/{template}', [EvaluationController::class, 'template'])->middleware('menu.access:gradebook');
+    Route::post('/notas/plantillas/aplicar', [EvaluationController::class, 'applyTemplate'])->middleware('menu.access:gradebook');
 
     Route::get('/report-card', [PanelController::class, 'reportCard'])->middleware('menu.access:reportcard');
     Route::get('/report-card/pdf', [PanelController::class, 'reportCardPdf'])->middleware('menu.access:reportcard');

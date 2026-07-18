@@ -3,7 +3,7 @@
 <head>
     <meta charset="UTF-8">
     <meta name="viewport" content="width=device-width, initial-scale=1.0">
-    <title>Ingreso | EduNotas</title>
+    <title>Ingreso | ACI</title>
     <link rel="preconnect" href="https://fonts.googleapis.com">
     <link href="https://fonts.googleapis.com/css2?family=Source+Sans+Pro:wght@300;400;600;700&display=swap" rel="stylesheet">
     <link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/5.15.4/css/all.min.css">
@@ -13,7 +13,7 @@
         body {
             min-height: 100vh;
             font-family: 'Source Sans Pro', sans-serif;
-            background: linear-gradient(135deg, #0b2545 0%, #1d4e89 45%, #dbeafe 100%);
+            background: linear-gradient(135deg, #230204 0%, #520206 45%, #f3d7dc 100%);
             display: flex;
             align-items: center;
             justify-content: center;
@@ -25,10 +25,10 @@
             border: 0;
             border-radius: 18px;
             overflow: hidden;
-            box-shadow: 0 20px 50px rgba(11, 37, 69, .25);
+            box-shadow: 0 20px 50px rgba(130, 0, 5, .22);
         }
         .login-header {
-            background: #0b2545;
+            background: #820005;
             color: #fff;
             padding: 1.5rem;
         }
@@ -55,8 +55,8 @@
 <body>
     <div class="card login-card">
         <div class="login-header">
-            <img src="{{ app_media_url('images/defaults/logo.svg', 'images/defaults/logo.svg') }}" alt="Logo EduNotas" class="login-logo">
-            <h1>EduNotas</h1>
+            <img src="{{ app_media_url('images/defaults/logo-aci.png', 'images/defaults/logo-aci.png') }}" alt="Logo ACI" class="login-logo" style="object-fit:contain;border-radius:0;background:transparent;padding:0;">
+            <h1>ACI</h1>
             <p>Ingresa con tu usuario para acceder segun tu perfil.</p>
         </div>
         <div class="card-body p-4">
@@ -74,7 +74,7 @@
                     <input type="checkbox" class="form-check-input" id="remember" name="remember" value="1">
                     <label class="form-check-label" for="remember">Recordarme</label>
                 </div>
-                <button class="btn btn-primary btn-block">Ingresar</button>
+                <button class="btn btn-primary btn-block" style="background:#820005;border-color:#820005;">Ingresar</button>
             </form>
         </div>
     </div>
@@ -90,7 +90,7 @@
                     icon: 'success',
                     title: 'Operacion realizada',
                     text: successMessage,
-                    confirmButtonColor: '#1f6feb'
+                    confirmButtonColor: '#820005'
                 });
             }
 

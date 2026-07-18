@@ -7,6 +7,7 @@ use App\Models\StudentCategoryGrade;
 use App\Models\StudentConduct;
 use App\Services\GradeCollectorImportService;
 use App\Services\GradeCollectorService;
+use App\Support\CollectorTemplateCatalog;
 use Illuminate\Http\RedirectResponse;
 use Illuminate\Http\Request;
 use Illuminate\Support\Facades\DB;
@@ -200,6 +201,72 @@ class EvaluationController extends Controller
         return response()->download($templates[$template]);
     }
 
+    public function applyTemplate(Request $request): RedirectResponse
+    {
+        $data = $request->validate([
+            'asignacion_id' => ['required', 'integer', 'exists:asignaciones,id'],
+            'trimestre_id' => ['required', 'integer', 'exists:trimestres,id'],
+            'template_key' => ['required', 'string'],
+            'reemplazar_existentes' => ['nullable', 'boolean'],
+        ]);
+
+        $template = $this->collectorTemplateCatalog()->findByCode($data['template_key']);
+
+        if (! $template || $template->items->isEmpty()) {
+            throw ValidationException::withMessages([
+                'template_key' => 'La plantilla seleccionada no es valida.',
+            ]);
+        }
+
+        $hasActiveCategories = CollectorCategory::query()
+            ->where('asignacion_id', $data['asignacion_id'])
+            ->where('trimestre_id', $data['trimestre_id'])
+            ->where('activo', true)
+            ->exists();
+
+        if ($hasActiveCategories && ! $request->boolean('reemplazar_existentes')) {
+            throw ValidationException::withMessages([
+                'template_key' => 'Ya existen categorias activas. Marca reemplazar si deseas usar la plantilla.',
+            ]);
+        }
+
+        DB::transaction(function () use ($data, $template, $request): void {
+            if ($request->boolean('reemplazar_existentes')) {
+                $categoryIds = CollectorCategory::query()
+                    ->where('asignacion_id', $data['asignacion_id'])
+                    ->where('trimestre_id', $data['trimestre_id'])
+                    ->where('activo', true)
+                    ->pluck('id');
+
+                if ($categoryIds->isNotEmpty()) {
+                    CollectorCategory::query()
+                        ->whereIn('id', $categoryIds)
+                        ->update(['activo' => false]);
+
+                    StudentCategoryGrade::query()
+                        ->whereIn('categoria_id', $categoryIds)
+                        ->update(['activo' => false]);
+                }
+            }
+
+            foreach ($template->items as $index => $category) {
+                CollectorCategory::query()->create([
+                    'asignacion_id' => $data['asignacion_id'],
+                    'trimestre_id' => $data['trimestre_id'],
+                    'nombre' => $category->nombre,
+                    'porcentaje' => $category->porcentaje,
+                    'tipo_calculo' => $category->tipo_calculo,
+                    'cantidad_notas' => $this->gradeCollectorService()->quantityForType($category->tipo_calculo),
+                    'orden' => $category->orden ?? ($index + 1),
+                    'activo' => true,
+                ]);
+            }
+        });
+
+        return redirect($this->gradebookRedirect($data))
+            ->with('status', 'Plantilla aplicada correctamente.');
+    }
+
     private function validateCategory(Request $request, ?CollectorCategory $category = null): array
     {
         return $request->validate([
@@ -283,5 +350,10 @@ class EvaluationController extends Controller
     private function gradeCollectorService(): GradeCollectorService
     {
         return app(GradeCollectorService::class);
+    }
+
+    private function collectorTemplateCatalog(): CollectorTemplateCatalog
+    {
+        return app(CollectorTemplateCatalog::class);
     }
 }

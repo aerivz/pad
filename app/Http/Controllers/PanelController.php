@@ -4,6 +4,7 @@ namespace App\Http\Controllers;
 
 use Barryvdh\DomPDF\Facade\Pdf;
 use App\Models\Assignment;
+use App\Models\CollectorTemplate;
 use App\Models\EmailDispatch;
 use App\Models\EmailTemplate;
 use App\Models\CollectorCategory;
@@ -16,6 +17,7 @@ use App\Models\Subject;
 use App\Models\SystemBackup;
 use App\Models\Teacher;
 use App\Models\User;
+use App\Support\CollectorTemplateCatalog;
 use Illuminate\Support\Collection;
 use Illuminate\Support\Facades\Auth;
 use Illuminate\Support\Facades\DB;
@@ -72,7 +74,20 @@ class PanelController extends Controller
             ...$this->baseData(),
             'activeMenu' => 'subjects',
             'subjects' => $this->subjectsData(),
+            'categoryTemplates' => $this->collectorTemplateCatalog()->keyed(),
             'editSubject' => request()->filled('edit_subject') ? Subject::active()->find(request()->integer('edit_subject')) : null,
+        ]);
+    }
+
+    public function collectorTemplates(): View
+    {
+        return view('panel.collector-templates', [
+            ...$this->baseData(),
+            'activeMenu' => 'collector_templates',
+            'templates' => $this->collectorTemplatesData(),
+            'editTemplate' => request()->filled('edit_template')
+                ? CollectorTemplate::active()->with('items')->find(request()->integer('edit_template'))
+                : null,
         ]);
     }
 
@@ -131,6 +146,7 @@ class PanelController extends Controller
             'selectedTrimesterId' => $selectedTrimesterId,
             'categories' => $categories,
             'selectedAssignment' => $selectedAssignment,
+            'categoryTemplates' => $this->collectorTemplateCatalog()->keyed(),
             'editCategory' => request()->filled('edit_category') ? CollectorCategory::active()->find(request()->integer('edit_category')) : null,
             'gradeBoard' => $gradeBoard,
         ]);
@@ -392,10 +408,28 @@ class PanelController extends Controller
             ->leftJoinSub($finals, 'sf', function ($join) {
                 $join->on('sf.asignacion_id', '=', 'ag.id');
             })
-            ->groupBy('m.id', 'm.nombre')
-            ->selectRaw('m.id, m.nombre, COUNT(DISTINCT p.id) as total_profesores, COUNT(DISTINCT ag.seccion_id) as total_secciones, ROUND(AVG(sf.nota_final), 1) as promedio')
+            ->groupBy('m.id', 'm.nombre', 'm.plantilla_colector')
+            ->selectRaw('m.id, m.nombre, m.plantilla_colector, COUNT(DISTINCT p.id) as total_profesores, COUNT(DISTINCT ag.seccion_id) as total_secciones, ROUND(AVG(sf.nota_final), 1) as promedio')
             ->orderBy('m.id')
             ->get();
+    }
+
+    private function collectorTemplatesData()
+    {
+        return CollectorTemplate::active()
+            ->with('items')
+            ->withCount([
+                'items as total_categorias' => fn ($query) => $query->where('activo', true),
+            ])
+            ->select('plantillas_colector.*')
+            ->selectRaw('(select count(*) from materias where materias.plantilla_colector = plantillas_colector.codigo and materias.activo = 1) as total_materias')
+            ->orderBy('nombre')
+            ->get()
+            ->map(function (CollectorTemplate $template) {
+                $template->porcentaje_total = round((float) $template->items->sum('porcentaje'), 2);
+
+                return $template;
+            });
     }
 
     private function assignmentsData()
@@ -920,6 +954,11 @@ class PanelController extends Controller
             ->groupBy('na.alumno_id', 'c.asignacion_id', 'c.trimestre_id', 'ct.porcentaje_total');
     }
 
+    private function collectorTemplateCatalog(): CollectorTemplateCatalog
+    {
+        return app(CollectorTemplateCatalog::class);
+    }
+
     private function sectionsForYear(?int $year)
     {
         return DB::table('secciones')
@@ -939,7 +978,7 @@ class PanelController extends Controller
             })
             ->when($year, fn ($query) => $query->where('ag.anio_escolar', $year))
             ->when($sectionId, fn ($query) => $query->where('ag.seccion_id', $sectionId))
-            ->select('m.id', 'm.nombre')
+            ->select('m.id', 'm.nombre', 'm.plantilla_colector')
             ->distinct()
             ->orderBy('m.nombre')
             ->get();
@@ -965,7 +1004,7 @@ class PanelController extends Controller
             ->where('ag.anio_escolar', $year)
             ->where('ag.seccion_id', $sectionId)
             ->where('ag.materia_id', $subjectId)
-            ->select('ag.id', 'ag.seccion_id', 'ag.materia_id', 'ag.anio_escolar', 'm.nombre as materia', 's.grado', 's.nombre as seccion', DB::raw("CONCAT(p.nombres, ' ', p.apellidos) as profesor"))
+            ->select('ag.id', 'ag.seccion_id', 'ag.materia_id', 'ag.anio_escolar', 'm.nombre as materia', 'm.plantilla_colector', 's.grado', 's.nombre as seccion', DB::raw("CONCAT(p.nombres, ' ', p.apellidos) as profesor"))
             ->orderBy('ag.id')
             ->first();
     }

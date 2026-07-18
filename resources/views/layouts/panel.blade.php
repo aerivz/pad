@@ -3,7 +3,7 @@
 <head>
     <meta charset="UTF-8">
     <meta name="viewport" content="width=device-width, initial-scale=1.0">
-    <title>EduNotas</title>
+    <title>ACI</title>
     <link rel="preconnect" href="https://fonts.googleapis.com">
     <link href="https://fonts.googleapis.com/css2?family=Source+Sans+Pro:wght@300;400;600;700&display=swap" rel="stylesheet">
     <link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/5.15.4/css/all.min.css">
@@ -12,9 +12,17 @@
     @stack('styles')
     <style>
         body { font-family: 'Source Sans Pro', sans-serif; }
-        .brand-link { background: #001f3f !important; }
-        .brand-text { color: #fff !important; font-weight: 700 !important; }
-        .brand-text span { color: #74b9ff; }
+        .main-sidebar.sidebar-dark-navy {
+            background: #ffffff !important;
+            border-right: 1px solid #e5e7eb;
+            box-shadow: 10px 0 28px rgba(15, 23, 42, .05);
+        }
+        .brand-link {
+            background: #ffffff !important;
+            border-bottom: 1px solid #eef2f7;
+        }
+        .brand-text { color: #111827 !important; font-weight: 700 !important; }
+        .brand-text span { color: #820005; }
         .card, .small-box { border-radius: 12px; }
         .sticky-card { position: sticky; top: 1rem; }
         .avatar-initials { width: 36px; height: 36px; border-radius: 50%; display: inline-flex; align-items: center; justify-content: center; color: #fff; font-weight: 700; }
@@ -30,14 +38,14 @@
         .filter-toolbar { display: flex; flex-wrap: wrap; gap: .75rem; align-items: end; }
         .filter-toolbar .form-group { margin-bottom: 0; min-width: 180px; }
         .swal2-popup { font-family: 'Source Sans Pro', sans-serif; }
-        .brand-image-logo { width: 32px; height: 32px; object-fit: cover; border-radius: 8px; margin-left: 8px; margin-right: .5rem; }
+        .brand-image-logo { width: 40px; height: 40px; object-fit: contain; border-radius: 0; margin-left: 8px; margin-right: .65rem; }
         .user-avatar-image { width: 36px; height: 36px; border-radius: 50%; object-fit: cover; }
         .user-avatar-sidebar { width: 34px; height: 34px; border-radius: 50%; object-fit: cover; }
         .action-cell .btn { margin-bottom: .25rem; }
         .maint-card { border: 1px solid #d9e2f2; box-shadow: 0 10px 30px rgba(15, 23, 42, .06); }
         .maint-toolbar { display: flex; flex-wrap: wrap; justify-content: space-between; gap: 1rem; align-items: center; }
         .maint-toolbar-title { display: flex; align-items: center; gap: .65rem; font-weight: 700; color: #1f2d3d; }
-        .maint-toolbar-title i { color: #1d4ed8; }
+        .maint-toolbar-title i { color: #820005; }
         .maint-actions { display: flex; flex-wrap: wrap; gap: .5rem; }
         .maint-search-grid { display: grid; grid-template-columns: minmax(220px, 2fr) minmax(180px, 1fr) auto; gap: 1rem; align-items: end; }
         .maint-tags { display: flex; flex-wrap: wrap; gap: .65rem; }
@@ -50,7 +58,7 @@
         .maint-table tbody td { vertical-align: middle; padding: .9rem .9rem; border-top: 0; border-bottom: 1px solid #e7edf5; color: #243447; background: #fff; }
         .maint-table tbody tr:last-child td { border-bottom: 0; }
         .maint-table tbody tr:hover td { background: #fbfdff; }
-        .maint-avatar { width: 32px; height: 32px; border-radius: 50%; display: inline-flex; align-items: center; justify-content: center; background: #eff6ff; color: #2563eb; font-weight: 700; margin-right: .5rem; }
+        .maint-avatar { width: 32px; height: 32px; border-radius: 50%; display: inline-flex; align-items: center; justify-content: center; background: #f7e8ea; color: #820005; font-weight: 700; margin-right: .5rem; }
         .maint-identity { display: flex; align-items: center; }
         .maint-status { display: inline-flex; align-items: center; justify-content: center; min-width: 72px; padding: .15rem .55rem; border-radius: 999px; font-size: .74rem; font-weight: 700; }
         .maint-status-active { background: #dcfce7; color: #166534; }
@@ -61,6 +69,89 @@
         .maint-form-card { border: 1px dashed #bfd2f0; background: linear-gradient(180deg, #f8fbff, #ffffff); }
         .maint-form-card .card-header { background: transparent; }
         .maint-modal-list { margin: 0; padding-left: 1rem; }
+        .sidebar-dark-navy .brand-link .brand-image-logo {
+            background: #f8fafc;
+            padding: .2rem;
+            border: 1px solid #e5e7eb;
+        }
+        .sidebar-dark-navy .user-panel {
+            border-bottom: 1px solid #eef2f7 !important;
+        }
+        .sidebar-dark-navy .user-panel .info a,
+        .sidebar-dark-navy .user-panel small {
+            color: #374151 !important;
+        }
+        .sidebar-dark-navy .nav-sidebar > .nav-item {
+            margin: .15rem .6rem;
+        }
+        .sidebar-dark-navy .nav-sidebar > .nav-item.menu-group {
+            margin-top: .75rem;
+        }
+        .sidebar-dark-navy .nav-sidebar > .nav-item.menu-dashboard {
+            margin-bottom: .7rem;
+            padding-bottom: .7rem;
+            border-bottom: 1px solid #eef2f7;
+        }
+        .sidebar-dark-navy .nav-sidebar > .nav-item > .nav-link,
+        .sidebar-dark-navy .nav-treeview > .nav-item > .nav-link {
+            color: #4b5563 !important;
+            border-radius: 12px;
+            font-weight: 600;
+            padding-top: .8rem;
+            padding-bottom: .8rem;
+            transition: background .2s ease, color .2s ease, transform .2s ease;
+        }
+        .sidebar-dark-navy .nav-sidebar > .nav-item > .nav-link:hover,
+        .sidebar-dark-navy .nav-treeview > .nav-item > .nav-link:hover {
+            background: #f8fafc;
+            color: #111827 !important;
+        }
+        .sidebar-dark-navy .nav-sidebar > .nav-item > .nav-link.active,
+        .sidebar-dark-navy .nav-treeview > .nav-item > .nav-link.active {
+            background: #eef6ff;
+            color: #820005 !important;
+            box-shadow: inset 0 0 0 1px #ead2d7;
+        }
+        .sidebar-dark-navy .nav-sidebar > .nav-item.menu-group > .nav-link .right {
+            color: #9ca3af !important;
+            transition: transform .2s ease;
+        }
+        .sidebar-dark-navy .nav-sidebar > .nav-item.menu-group.menu-open > .nav-link .right {
+            transform: rotate(-90deg);
+            color: #820005 !important;
+        }
+        .sidebar-dark-navy .nav-sidebar > .nav-item.menu-dashboard > .nav-link {
+            background: linear-gradient(135deg, #ffffff 0%, #fbf2f3 100%);
+            border: 1px solid #ead2d7;
+            box-shadow: 0 8px 18px rgba(130, 0, 5, .06);
+        }
+        .sidebar-dark-navy .nav-sidebar > .nav-item > .nav-link.active .nav-icon,
+        .sidebar-dark-navy .nav-treeview > .nav-item > .nav-link.active .nav-icon,
+        .sidebar-dark-navy .nav-sidebar > .nav-item > .nav-link:hover .nav-icon,
+        .sidebar-dark-navy .nav-treeview > .nav-item > .nav-link:hover .nav-icon {
+            color: inherit !important;
+        }
+        .sidebar-dark-navy .nav-treeview {
+            margin-top: .5rem;
+            padding: .35rem 0 .25rem .9rem;
+            border-left: 2px solid #ebeef3;
+            margin-left: 1.35rem;
+        }
+        .sidebar-dark-navy .nav-treeview > .nav-item {
+            margin: .15rem 0;
+        }
+        .sidebar-dark-navy .nav-treeview > .nav-item > .nav-link {
+            padding-top: .65rem;
+            padding-bottom: .65rem;
+            padding-left: .85rem;
+            font-size: .95rem;
+        }
+        .sidebar-dark-navy .nav-sidebar .nav-icon {
+            color: #6b7280 !important;
+        }
+        .sidebar-dark-navy .nav-treeview > .nav-item > .nav-link .nav-icon {
+            font-size: .85rem;
+        }
         @media (max-width: 991.98px) {
             .maint-search-grid { grid-template-columns: 1fr; }
         }
@@ -93,8 +184,8 @@
 
     <aside class="main-sidebar sidebar-dark-navy elevation-4">
         <a href="{{ app_nav_url() }}" class="brand-link">
-            <img src="{{ app_media_url('images/defaults/logo.svg', 'images/defaults/logo.svg') }}" alt="Logo" class="brand-image-logo">
-            <span class="brand-text">Edu<span>Notas</span></span>
+            <img src="{{ app_media_url('images/defaults/logo-aci.png', 'images/defaults/logo-aci.png') }}" alt="Logo ACI" class="brand-image-logo">
+            <span class="brand-text">A<span>CI</span></span>
         </a>
         <div class="sidebar">
             <div class="user-panel mt-3 pb-3 mb-3 d-flex">
@@ -109,7 +200,18 @@
                     @foreach ($menu as $key => $item)
                         @php($children = $item['children'] ?? [])
                         @php($isChildActive = collect($children)->contains(fn ($child) => $activeMenu === $child['key']))
-                        <li class="nav-item {{ count($children) > 0 ? 'has-treeview '.(($activeMenu === $key || $isChildActive) ? 'menu-open' : '') : '' }}">
+                        @php($itemClasses = ['nav-item'])
+                        @if ($key === 'dashboard')
+                            @php($itemClasses[] = 'menu-dashboard')
+                        @endif
+                        @if (count($children) > 0)
+                            @php($itemClasses[] = 'has-treeview')
+                            @php($itemClasses[] = 'menu-group')
+                            @if ($activeMenu === $key || $isChildActive)
+                                @php($itemClasses[] = 'menu-open')
+                            @endif
+                        @endif
+                        <li class="{{ implode(' ', $itemClasses) }}">
                             <a href="{{ count($children) > 0 ? ($item['url'] === '#' ? '#' : $item['url']) : $item['url'] }}" class="nav-link {{ $activeMenu === $key || $isChildActive ? 'active' : '' }} {{ count($children) > 0 ? 'submenu-toggle' : '' }}" @if(count($children) > 0) data-submenu-toggle="true" @endif>
                                 <i class="nav-icon {{ $item['icon'] }}"></i>
                                 <p>

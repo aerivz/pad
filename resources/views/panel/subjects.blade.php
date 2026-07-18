@@ -13,6 +13,9 @@
                 <span>Catalogo de materias</span>
             </div>
             <div class="maint-actions">
+                <a href="{{ \App\Support\AppUrl::route('collector-templates.index') }}" class="btn btn-outline-primary btn-sm">
+                    <i class="fas fa-layer-group mr-1"></i>Plantillas de notas
+                </a>
                 <button class="btn btn-success btn-sm" type="button" data-toggle="modal" data-target="#subjectFormModal">
                     <i class="fas fa-plus mr-1"></i>{{ $editSubject ? 'Editar materia' : 'Nueva materia' }}
                 </button>
@@ -44,6 +47,7 @@
                 <tr>
                     <th>#</th>
                     <th>Materia</th>
+                    <th>Plantilla</th>
                     <th>Profesores</th>
                     <th>Secciones</th>
                     <th>Promedio</th>
@@ -64,6 +68,7 @@
                                 </div>
                             </div>
                         </td>
+                        <td>{{ $categoryTemplates->get($subject->plantilla_colector)['name'] ?? 'Sin plantilla' }}</td>
                         <td>{{ $subject->total_profesores }}</td>
                         <td>{{ $subject->total_secciones }}</td>
                         <td>{{ $subject->promedio ?? '-' }}</td>
@@ -71,6 +76,7 @@
                         <td class="maint-actions-cell">
                             <button type="button" class="btn btn-xs btn-info subject-view-button"
                                 data-name="{{ $subject->nombre }}"
+                                data-template="{{ $categoryTemplates->get($subject->plantilla_colector)['name'] ?? 'Sin plantilla' }}"
                                 data-teachers="{{ $subject->total_profesores }}"
                                 data-sections="{{ $subject->total_secciones }}"
                                 data-average="{{ $subject->promedio ?? 'Sin promedio' }}">
@@ -81,10 +87,10 @@
                         </td>
                     </tr>
                 @empty
-                    <tr><td colspan="7" class="text-center text-muted">No hay materias registradas.</td></tr>
+                    <tr><td colspan="8" class="text-center text-muted">No hay materias registradas.</td></tr>
                 @endforelse
                 @if ($subjects->count() > 0)
-                    <tr data-empty-filter style="display:none;"><td colspan="7" class="text-center text-muted">No se encontraron materias con esos filtros.</td></tr>
+                    <tr data-empty-filter style="display:none;"><td colspan="8" class="text-center text-muted">No se encontraron materias con esos filtros.</td></tr>
                 @endif
                 </tbody>
             </table>
@@ -104,7 +110,16 @@
                     @csrf
                     @if ($editSubject) @method('PATCH') @endif
                     <div class="row">
-                        <div class="col-md-12 form-group"><label>Nombre</label><input name="nombre" class="form-control" value="{{ old('nombre', $editSubject->nombre ?? '') }}" required></div>
+                        <div class="col-md-6 form-group"><label>Nombre</label><input name="nombre" class="form-control" value="{{ old('nombre', $editSubject->nombre ?? '') }}" required></div>
+                        <div class="col-md-6 form-group">
+                            <label>Plantilla del colector</label>
+                            <select name="plantilla_colector" class="form-control">
+                                <option value="">Sin plantilla</option>
+                                @foreach ($categoryTemplates as $templateKey => $template)
+                                    <option value="{{ $templateKey }}" @selected(old('plantilla_colector', $editSubject->plantilla_colector ?? $categoryTemplates->keys()->first()) === $templateKey)>{{ $template['name'] }}</option>
+                                @endforeach
+                            </select>
+                        </div>
                     </div>
                     <button class="btn btn-primary btn-sm">{{ $editSubject ? 'Guardar cambios' : 'Agregar materia' }}</button>
                     @if ($editSubject)<a href="{{ \App\Support\AppUrl::route('subjects.index') }}" class="btn btn-default btn-sm">Cancelar</a>@endif
@@ -124,6 +139,7 @@
             <div class="modal-body">
                 <ul class="maint-modal-list">
                     <li><strong>Materia:</strong> <span data-subject-field="name"></span></li>
+                    <li><strong>Plantilla:</strong> <span data-subject-field="template"></span></li>
                     <li><strong>Profesores:</strong> <span data-subject-field="teachers"></span></li>
                     <li><strong>Secciones:</strong> <span data-subject-field="sections"></span></li>
                     <li><strong>Promedio:</strong> <span data-subject-field="average"></span></li>
@@ -144,6 +160,7 @@
         document.querySelectorAll('.subject-view-button').forEach(function (button) {
             button.addEventListener('click', function () {
                 document.querySelector('[data-subject-field="name"]').textContent = button.dataset.name;
+                document.querySelector('[data-subject-field="template"]').textContent = button.dataset.template;
                 document.querySelector('[data-subject-field="teachers"]').textContent = button.dataset.teachers;
                 document.querySelector('[data-subject-field="sections"]').textContent = button.dataset.sections;
                 document.querySelector('[data-subject-field="average"]').textContent = button.dataset.average;

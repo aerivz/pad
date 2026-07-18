@@ -3,7 +3,7 @@
 <head>
     <meta charset="UTF-8">
     <meta name="viewport" content="width=device-width, initial-scale=1.0">
-    <title>EduNotas</title>
+    <title>ACI</title>
     <link rel="preconnect" href="https://fonts.googleapis.com">
     <link href="https://fonts.googleapis.com/css2?family=Source+Sans+Pro:wght@300;400;600;700&display=swap" rel="stylesheet">
     <link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/5.15.4/css/all.min.css">
@@ -14,7 +14,7 @@
         .login-box-custom { width: 400px; }
         .brand-link { background: #001f3f !important; }
         .brand-text, .login-logo a { color: #fff !important; font-weight: 700 !important; }
-        .brand-text span, .login-logo span { color: #74b9ff; }
+        .brand-text span, .login-logo span { color: #820005; }
         .login-card, .card, .small-box { border-radius: 12px; }
         .login-card .card-body { padding: 32px; }
         .avatar-initials { width: 36px; height: 36px; border-radius: 50%; display: inline-flex; align-items: center; justify-content: center; color: #fff; font-weight: 700; }
@@ -67,7 +67,7 @@
 
 <div id="login-page">
     <div class="login-box login-box-custom">
-        <div class="login-logo text-center mb-3"><a href="/pad/"><i class="fas fa-graduation-cap mr-2"></i>Edu<span>Notas</span></a></div>
+        <div class="login-logo text-center mb-3"><img src="{{ app_media_url('images/defaults/logo-aci.png', 'images/defaults/logo-aci.png') }}" alt="Logo ACI" style="width:54px;height:54px;object-fit:contain;margin-right:.75rem;"><a href="/pad/">A<span>CI</span></a></div>
         <div class="card login-card">
             <div class="card-body">
                 <p class="login-box-msg text-muted mb-1">Bienvenido al sistema acadÃ©mico</p>
@@ -102,8 +102,8 @@
 
     <aside class="main-sidebar sidebar-dark-navy elevation-4">
         <a href="/pad/" class="brand-link">
-            <i class="fas fa-graduation-cap brand-image mr-2" style="font-size:1.4rem;color:#74b9ff;margin-left:8px;"></i>
-            <span class="brand-text">Edu<span>Notas</span></span>
+            <img src="{{ app_media_url('images/defaults/logo-aci.png', 'images/defaults/logo-aci.png') }}" alt="Logo ACI" class="brand-image-logo" style="width:40px;height:40px;object-fit:contain;margin-left:8px;margin-right:.65rem;">
+            <span class="brand-text">A<span>CI</span></span>
         </a>
         <div class="sidebar">
             <div class="user-panel mt-3 pb-3 mb-3 d-flex">

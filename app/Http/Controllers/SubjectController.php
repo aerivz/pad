@@ -5,6 +5,7 @@ namespace App\Http\Controllers;
 use App\Models\Subject;
 use Illuminate\Http\RedirectResponse;
 use Illuminate\Http\Request;
+use Illuminate\Validation\Rule;
 
 class SubjectController extends Controller
 {
@@ -12,6 +13,11 @@ class SubjectController extends Controller
     {
         $data = $request->validate([
             'nombre' => ['required', 'string', 'max:100'],
+            'plantilla_colector' => [
+                'nullable',
+                'string',
+                Rule::exists('plantillas_colector', 'codigo')->where(fn ($query) => $query->where('activo', true)),
+            ],
         ]);
 
         Subject::create($data);
@@ -23,6 +29,11 @@ class SubjectController extends Controller
     {
         $data = $request->validate([
             'nombre' => ['required', 'string', 'max:100'],
+            'plantilla_colector' => [
+                'nullable',
+                'string',
+                Rule::exists('plantillas_colector', 'codigo')->where(fn ($query) => $query->where('activo', true)),
+            ],
         ]);
 
         $subject->update($data);
