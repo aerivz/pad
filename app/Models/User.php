@@ -6,6 +6,7 @@ use App\Models\Concerns\ResolvesMediaUrls;
 use Illuminate\Database\Eloquent\Factories\HasFactory;
 use Illuminate\Database\Eloquent\Builder;
 use Illuminate\Database\Eloquent\Relations\BelongsTo;
+use Illuminate\Database\Eloquent\Relations\HasOne;
 use Illuminate\Foundation\Auth\User as Authenticatable;
 use Illuminate\Notifications\Notifiable;
 
@@ -55,6 +56,11 @@ class User extends Authenticatable
         return $this->belongsTo(Role::class, 'rol_id');
     }
 
+    public function teacher(): HasOne
+    {
+        return $this->hasOne(Teacher::class, 'usuario_id');
+    }
+
     public function allowedMenuKeys(): array
     {
         $role = $this->relationLoaded('role') ? $this->role : $this->role()->with('menus')->first();
@@ -74,6 +80,13 @@ class User extends Authenticatable
     public function hasMenuAccess(string $menuKey): bool
     {
         return in_array($menuKey, $this->allowedMenuKeys(), true);
+    }
+
+    public function isProfessor(): bool
+    {
+        $role = $this->relationLoaded('role') ? $this->role : $this->role()->first();
+
+        return ($role->nombre ?? null) === 'profesor';
     }
 
     public function getAvatarUrlAttribute(): string

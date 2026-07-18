@@ -23,10 +23,10 @@
         <div class="maint-search-grid mb-3" data-filter-target="sections-table">
             <div class="form-group">
                 <label>Busqueda</label>
-                <input type="text" class="form-control" placeholder="Grado, seccion o año" data-filter-name="text">
+                <input type="text" class="form-control" placeholder="Grado, seccion, titular o anio" data-filter-name="text">
             </div>
             <div class="form-group">
-                <label>Año</label>
+                <label>Anio</label>
                 <select class="form-control" data-filter-name="year">
                     <option value="">Todos</option>
                     @foreach ($sections->pluck('anio_escolar')->unique()->sortDesc() as $year)
@@ -52,7 +52,8 @@
                 <tr>
                     <th>#</th>
                     <th>Nombre</th>
-                    <th>Año</th>
+                    <th>Titular</th>
+                    <th>Anio</th>
                     <th>Alumnos</th>
                     <th>Materias</th>
                     <th>Promedio</th>
@@ -62,7 +63,7 @@
                 </thead>
                 <tbody>
                 @forelse ($sections as $section)
-                    <tr data-filter-row data-text="{{ strtolower($section->grado.' '.$section->nombre.' '.$section->anio_escolar) }}" data-year="{{ strtolower((string) $section->anio_escolar) }}">
+                    <tr data-filter-row data-text="{{ strtolower($section->grado.' '.$section->nombre.' '.$section->anio_escolar.' '.($section->titular ?? '')) }}" data-year="{{ strtolower((string) $section->anio_escolar) }}">
                         <td>{{ $section->id }}</td>
                         <td>
                             <div class="maint-identity">
@@ -73,6 +74,7 @@
                                 </div>
                             </div>
                         </td>
+                        <td>{{ $section->titular ?: 'Sin titular' }}</td>
                         <td>{{ $section->anio_escolar }}</td>
                         <td>{{ $section->total_alumnos }}</td>
                         <td>{{ $section->total_materias }}</td>
@@ -81,6 +83,7 @@
                         <td class="maint-actions-cell">
                             <button type="button" class="btn btn-xs btn-info section-view-button"
                                 data-section="{{ $section->grado }} {{ $section->nombre }}"
+                                data-holder="{{ $section->titular ?: 'Sin titular' }}"
                                 data-year="{{ $section->anio_escolar }}"
                                 data-students="{{ $section->total_alumnos }}"
                                 data-subjects="{{ $section->total_materias }}"
@@ -92,10 +95,10 @@
                         </td>
                     </tr>
                 @empty
-                    <tr><td colspan="8" class="text-center text-muted">No hay secciones registradas.</td></tr>
+                    <tr><td colspan="9" class="text-center text-muted">No hay secciones registradas.</td></tr>
                 @endforelse
                 @if ($sections->count() > 0)
-                    <tr data-empty-filter style="display:none;"><td colspan="8" class="text-center text-muted">No se encontraron secciones con esos filtros.</td></tr>
+                    <tr data-empty-filter style="display:none;"><td colspan="9" class="text-center text-muted">No se encontraron secciones con esos filtros.</td></tr>
                 @endif
                 </tbody>
             </table>
@@ -115,9 +118,18 @@
                     @csrf
                     @if ($editSection) @method('PATCH') @endif
                     <div class="row">
-                        <div class="col-md-4 form-group"><label>Nombre</label><input name="nombre" class="form-control" value="{{ old('nombre', $editSection->nombre ?? '') }}" required></div>
-                        <div class="col-md-4 form-group"><label>Grado</label><input name="grado" class="form-control" value="{{ old('grado', $editSection->grado ?? '') }}" required></div>
-                        <div class="col-md-4 form-group"><label>Anio escolar</label><input type="number" name="anio_escolar" class="form-control" value="{{ old('anio_escolar', $editSection->anio_escolar ?? date('Y')) }}" required></div>
+                        <div class="col-md-3 form-group"><label>Nombre</label><input name="nombre" class="form-control" value="{{ old('nombre', $editSection->nombre ?? '') }}" required></div>
+                        <div class="col-md-3 form-group"><label>Grado</label><input name="grado" class="form-control" value="{{ old('grado', $editSection->grado ?? '') }}" required></div>
+                        <div class="col-md-3 form-group"><label>Anio escolar</label><input type="number" name="anio_escolar" class="form-control" value="{{ old('anio_escolar', $editSection->anio_escolar ?? date('Y')) }}" required></div>
+                        <div class="col-md-3 form-group">
+                            <label>Profesor titular</label>
+                            <select name="titular_profesor_id" class="form-control">
+                                <option value="">Sin titular</option>
+                                @foreach ($teachersCatalog as $teacher)
+                                    <option value="{{ $teacher->id }}" @selected((string) old('titular_profesor_id', $editSection->titular_profesor_id ?? '') === (string) $teacher->id)>{{ $teacher->nombres }} {{ $teacher->apellidos }}</option>
+                                @endforeach
+                            </select>
+                        </div>
                     </div>
                     <button class="btn btn-primary btn-sm">{{ $editSection ? 'Guardar cambios' : 'Agregar seccion' }}</button>
                     @if ($editSection)<a href="{{ \App\Support\AppUrl::route('sections.index') }}" class="btn btn-default btn-sm">Cancelar</a>@endif
@@ -137,7 +149,8 @@
             <div class="modal-body">
                 <ul class="maint-modal-list">
                     <li><strong>Seccion:</strong> <span data-section-field="section"></span></li>
-                    <li><strong>Año:</strong> <span data-section-field="year"></span></li>
+                    <li><strong>Titular:</strong> <span data-section-field="holder"></span></li>
+                    <li><strong>Anio:</strong> <span data-section-field="year"></span></li>
                     <li><strong>Alumnos:</strong> <span data-section-field="students"></span></li>
                     <li><strong>Materias:</strong> <span data-section-field="subjects"></span></li>
                     <li><strong>Promedio:</strong> <span data-section-field="average"></span></li>
@@ -158,6 +171,7 @@
         document.querySelectorAll('.section-view-button').forEach(function (button) {
             button.addEventListener('click', function () {
                 document.querySelector('[data-section-field="section"]').textContent = button.dataset.section;
+                document.querySelector('[data-section-field="holder"]').textContent = button.dataset.holder;
                 document.querySelector('[data-section-field="year"]').textContent = button.dataset.year;
                 document.querySelector('[data-section-field="students"]').textContent = button.dataset.students;
                 document.querySelector('[data-section-field="subjects"]').textContent = button.dataset.subjects;

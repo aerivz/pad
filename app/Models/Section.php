@@ -4,6 +4,7 @@ namespace App\Models;
 
 use Illuminate\Database\Eloquent\Builder;
 use Illuminate\Database\Eloquent\Model;
+use Illuminate\Database\Eloquent\Relations\BelongsTo;
 
 class Section extends Model
 {
@@ -15,6 +16,7 @@ class Section extends Model
         'nombre',
         'grado',
         'anio_escolar',
+        'titular_profesor_id',
         'activo',
     ];
 
@@ -28,5 +30,10 @@ class Section extends Model
     public function scopeActive(Builder $query): Builder
     {
         return $query->where('activo', true);
+    }
+
+    public function titular(): BelongsTo
+    {
+        return $this->belongsTo(Teacher::class, 'titular_profesor_id');
     }
 }

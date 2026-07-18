@@ -23,7 +23,7 @@
         <div class="maint-search-grid mb-3" data-filter-target="teachers-table">
             <div class="form-group">
                 <label>Busqueda</label>
-                <input type="text" class="form-control" placeholder="Nombre, correo o especialidad" data-filter-name="text">
+                <input type="text" class="form-control" placeholder="Nombre, usuario, correo o especialidad" data-filter-name="text">
             </div>
             <div class="form-group">
                 <label>Especialidad</label>
@@ -46,8 +46,10 @@
                 <tr>
                     <th>#</th>
                     <th>Profesor</th>
+                    <th>Usuario</th>
                     <th>Correo</th>
                     <th>Especialidad</th>
+                    <th>Titular</th>
                     <th>Secciones</th>
                     <th>Asignaciones</th>
                     <th>Estado</th>
@@ -56,7 +58,7 @@
                 </thead>
                 <tbody>
                 @forelse ($teachers as $teacher)
-                    <tr data-filter-row data-text="{{ strtolower($teacher->nombres.' '.$teacher->apellidos.' '.$teacher->email.' '.$teacher->especialidad.' '.$teacher->materias) }}" data-specialty="{{ strtolower($teacher->especialidad ?? 'sin especialidad') }}">
+                    <tr data-filter-row data-text="{{ strtolower($teacher->nombres.' '.$teacher->apellidos.' '.$teacher->email.' '.$teacher->especialidad.' '.$teacher->materias.' '.($teacher->nombre_usuario ?? '')) }}" data-specialty="{{ strtolower($teacher->especialidad ?? 'sin especialidad') }}">
                         <td>{{ $teacher->id }}</td>
                         <td>
                             <div class="maint-identity">
@@ -67,30 +69,34 @@
                                 </div>
                             </div>
                         </td>
+                        <td>{{ $teacher->nombre_usuario ?: 'Pendiente' }}</td>
                         <td>{{ $teacher->email }}</td>
                         <td>{{ $teacher->especialidad ?: 'Sin especialidad' }}</td>
+                        <td>{{ $teacher->total_titularidades }}</td>
                         <td>{{ $teacher->total_secciones }}</td>
                         <td>{{ $teacher->total_asignaciones }}</td>
                         <td><span class="maint-status maint-status-active">Activo</span></td>
                         <td class="maint-actions-cell">
                             <button type="button" class="btn btn-xs btn-info teacher-view-button"
                                 data-name="{{ $teacher->nombres }} {{ $teacher->apellidos }}"
+                                data-user="{{ $teacher->nombre_usuario ?: 'Pendiente' }}"
                                 data-email="{{ $teacher->email }}"
                                 data-specialty="{{ $teacher->especialidad ?: 'Sin especialidad' }}"
+                                data-head="{{ $teacher->total_titularidades }}"
                                 data-sections="{{ $teacher->total_secciones }}"
                                 data-assignments="{{ $teacher->total_asignaciones }}"
                                 data-subjects="{{ $teacher->materias ?: 'Sin materias asignadas' }}">
                                 <i class="fas fa-eye"></i>
                             </button>
                             <a href="{{ \App\Support\AppUrl::route('teachers.index') }}?edit_teacher={{ $teacher->id }}" class="btn btn-xs btn-warning"><i class="fas fa-pen"></i></a>
-                            <form method="POST" action="{{ \App\Support\AppUrl::route('teachers.destroy', ['teacher' => $teacher->id]) }}" data-swal-confirm="true" data-swal-title="Desactivar profesor" data-swal-text="El profesor quedara inactivo y sus datos seguiran resguardados en el sistema." data-swal-confirm-label="Si, desactivar">@csrf @method('DELETE')<button class="btn btn-xs btn-danger"><i class="fas fa-user-slash"></i></button></form>
+                            <form method="POST" action="{{ \App\Support\AppUrl::route('teachers.destroy', ['teacher' => $teacher->id]) }}" data-swal-confirm="true" data-swal-title="Desactivar profesor" data-swal-text="El profesor y su usuario quedaran inactivos en el sistema." data-swal-confirm-label="Si, desactivar">@csrf @method('DELETE')<button class="btn btn-xs btn-danger"><i class="fas fa-user-slash"></i></button></form>
                         </td>
                     </tr>
                 @empty
-                    <tr><td colspan="8" class="text-center text-muted">No hay profesores registrados.</td></tr>
+                    <tr><td colspan="10" class="text-center text-muted">No hay profesores registrados.</td></tr>
                 @endforelse
                 @if ($teachers->count() > 0)
-                    <tr data-empty-filter style="display:none;"><td colspan="8" class="text-center text-muted">No se encontraron profesores con esos filtros.</td></tr>
+                    <tr data-empty-filter style="display:none;"><td colspan="10" class="text-center text-muted">No se encontraron profesores con esos filtros.</td></tr>
                 @endif
                 </tbody>
             </table>
@@ -127,6 +133,8 @@
                                 @endforeach
                             </select>
                         </div>
+                        <div class="col-md-6 form-group"><label>Usuario del sistema</label><input name="nombre_usuario" class="form-control" value="{{ old('nombre_usuario', $editTeacher->nombre_usuario ?? '') }}" required></div>
+                        <div class="col-md-6 form-group"><label>{{ !empty($editTeacher->usuario_id) ? 'Nueva contrasena (opcional)' : 'Contrasena inicial' }}</label><input type="password" name="password" class="form-control" {{ !empty($editTeacher->usuario_id) ? '' : 'required' }}></div>
                     </div>
                     <button class="btn btn-primary btn-sm">{{ $editTeacher ? 'Guardar cambios' : 'Agregar profesor' }}</button>
                     @if ($editTeacher)<a href="{{ \App\Support\AppUrl::route('teachers.index') }}" class="btn btn-default btn-sm">Cancelar</a>@endif
@@ -146,8 +154,10 @@
             <div class="modal-body">
                 <ul class="maint-modal-list">
                     <li><strong>Nombre:</strong> <span data-teacher-field="name"></span></li>
+                    <li><strong>Usuario:</strong> <span data-teacher-field="user"></span></li>
                     <li><strong>Correo:</strong> <span data-teacher-field="email"></span></li>
                     <li><strong>Especialidad:</strong> <span data-teacher-field="specialty"></span></li>
+                    <li><strong>Titular de secciones:</strong> <span data-teacher-field="head"></span></li>
                     <li><strong>Secciones:</strong> <span data-teacher-field="sections"></span></li>
                     <li><strong>Asignaciones:</strong> <span data-teacher-field="assignments"></span></li>
                     <li><strong>Materias:</strong> <span data-teacher-field="subjects"></span></li>
@@ -168,8 +178,10 @@
         document.querySelectorAll('.teacher-view-button').forEach(function (button) {
             button.addEventListener('click', function () {
                 document.querySelector('[data-teacher-field="name"]').textContent = button.dataset.name;
+                document.querySelector('[data-teacher-field="user"]').textContent = button.dataset.user;
                 document.querySelector('[data-teacher-field="email"]').textContent = button.dataset.email;
                 document.querySelector('[data-teacher-field="specialty"]').textContent = button.dataset.specialty;
+                document.querySelector('[data-teacher-field="head"]').textContent = button.dataset.head;
                 document.querySelector('[data-teacher-field="sections"]').textContent = button.dataset.sections;
                 document.querySelector('[data-teacher-field="assignments"]').textContent = button.dataset.assignments;
                 document.querySelector('[data-teacher-field="subjects"]').textContent = button.dataset.subjects;

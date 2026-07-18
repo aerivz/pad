@@ -5,6 +5,7 @@ namespace App\Http\Controllers;
 use App\Models\CollectorCategory;
 use App\Models\StudentCategoryGrade;
 use App\Models\StudentConduct;
+use App\Models\User;
 use App\Services\GradeCollectorImportService;
 use App\Services\GradeCollectorService;
 use App\Support\CollectorTemplateCatalog;
@@ -21,6 +22,7 @@ class EvaluationController extends Controller
     public function store(Request $request): RedirectResponse
     {
         $data = $this->validateCategory($request);
+        $this->guardAssignmentAccess((int) $data['asignacion_id']);
         $this->guardCategoryPercentage($data['asignacion_id'], $data['trimestre_id'], (float) $data['porcentaje']);
 
         CollectorCategory::query()->create([
@@ -36,6 +38,7 @@ class EvaluationController extends Controller
     public function update(Request $request, CollectorCategory $evaluation): RedirectResponse
     {
         $data = $this->validateCategory($request, $evaluation);
+        $this->guardAssignmentAccess((int) $data['asignacion_id']);
         $this->guardCategoryPercentage($data['asignacion_id'], $data['trimestre_id'], (float) $data['porcentaje'], $evaluation->id);
 
         $evaluation->update([
@@ -49,6 +52,8 @@ class EvaluationController extends Controller
 
     public function destroy(CollectorCategory $evaluation): RedirectResponse
     {
+        $this->guardAssignmentAccess((int) $evaluation->asignacion_id);
+
         DB::transaction(function () use ($evaluation): void {
             $evaluation->update(['activo' => false]);
 
@@ -78,6 +83,7 @@ class EvaluationController extends Controller
             'conduct' => ['nullable', 'array'],
             'conduct.*' => ['nullable', 'numeric', 'min:0', 'max:100'],
         ]);
+        $this->guardAssignmentAccess((int) $data['asignacion_id']);
 
         $categories = CollectorCategory::query()
             ->where('asignacion_id', $data['asignacion_id'])
@@ -156,6 +162,7 @@ class EvaluationController extends Controller
             'archivo' => ['required', 'file', 'max:10240'],
             'limpiar_antes_importar' => ['nullable', 'boolean'],
         ]);
+        $this->guardAssignmentAccess((int) $data['asignacion_id']);
 
         try {
             $summary = $importService->import(
@@ -209,6 +216,7 @@ class EvaluationController extends Controller
             'template_key' => ['required', 'string'],
             'reemplazar_existentes' => ['nullable', 'boolean'],
         ]);
+        $this->guardAssignmentAccess((int) $data['asignacion_id']);
 
         $template = $this->collectorTemplateCatalog()->findByCode($data['template_key']);
 
@@ -355,5 +363,27 @@ class EvaluationController extends Controller
     private function collectorTemplateCatalog(): CollectorTemplateCatalog
     {
         return app(CollectorTemplateCatalog::class);
+    }
+
+    private function guardAssignmentAccess(int $assignmentId): void
+    {
+        $user = auth()->user();
+
+        if (! $user instanceof User || ! $user->isProfessor()) {
+            return;
+        }
+
+        $teacherId = (int) DB::table('profesores')
+            ->where('usuario_id', $user->id)
+            ->where('activo', true)
+            ->value('id');
+
+        $allowed = DB::table('asignaciones')
+            ->where('id', $assignmentId)
+            ->where('activo', true)
+            ->where('profesor_id', $teacherId)
+            ->exists();
+
+        abort_unless($allowed, 403);
     }
 }

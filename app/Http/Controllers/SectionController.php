@@ -14,6 +14,7 @@ class SectionController extends Controller
             'nombre' => ['required', 'string', 'max:50'],
             'grado' => ['required', 'string', 'max:50'],
             'anio_escolar' => ['required', 'integer', 'min:2000', 'max:2100'],
+            'titular_profesor_id' => ['nullable', 'integer', 'exists:profesores,id'],
         ]);
 
         Section::create($data);
@@ -27,6 +28,7 @@ class SectionController extends Controller
             'nombre' => ['required', 'string', 'max:50'],
             'grado' => ['required', 'string', 'max:50'],
             'anio_escolar' => ['required', 'integer', 'min:2000', 'max:2100'],
+            'titular_profesor_id' => ['nullable', 'integer', 'exists:profesores,id'],
         ]);
 
         $section->update($data);

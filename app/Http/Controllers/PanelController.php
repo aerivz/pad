@@ -42,6 +42,7 @@ class PanelController extends Controller
             ...$this->baseData(),
             'activeMenu' => 'sections',
             'sections' => $this->sectionsData(),
+            'teachersCatalog' => Teacher::active()->orderBy('nombres')->orderBy('apellidos')->get(),
             'editSection' => request()->filled('edit_section') ? Section::active()->find(request()->integer('edit_section')) : null,
         ]);
     }
@@ -59,12 +60,20 @@ class PanelController extends Controller
 
     public function teachers(): View
     {
+        $editTeacher = request()->filled('edit_teacher')
+            ? Teacher::active()->with('user')->find(request()->integer('edit_teacher'))
+            : null;
+
+        if ($editTeacher?->user) {
+            $editTeacher->nombre_usuario = $editTeacher->user->nombre_usuario;
+        }
+
         return view('panel.teachers', [
             ...$this->baseData(),
             'activeMenu' => 'teachers',
             'teachers' => $this->teachersData(),
             'subjectsCatalog' => Subject::active()->orderBy('nombre')->get(),
-            'editTeacher' => request()->filled('edit_teacher') ? Teacher::active()->find(request()->integer('edit_teacher')) : null,
+            'editTeacher' => $editTeacher,
         ]);
     }
 
@@ -346,11 +355,14 @@ class PanelController extends Controller
             ->leftJoin('asignaciones as ag', function ($join) {
                 $join->on('ag.seccion_id', '=', 's.id')->where('ag.activo', true);
             })
+            ->leftJoin('profesores as tp', function ($join) {
+                $join->on('tp.id', '=', 's.titular_profesor_id')->where('tp.activo', true);
+            })
             ->leftJoinSub($finals, 'sf', function ($join) {
                 $join->on('sf.asignacion_id', '=', 'ag.id')->on('sf.alumno_id', '=', 'a.id');
             })
-            ->groupBy('s.id', 's.nombre', 's.grado', 's.anio_escolar')
-            ->selectRaw('s.id, s.nombre, s.grado, s.anio_escolar, COUNT(DISTINCT a.id) as total_alumnos, COUNT(DISTINCT ag.materia_id) as total_materias, ROUND(AVG(sf.nota_final), 1) as promedio')
+            ->groupBy('s.id', 's.nombre', 's.grado', 's.anio_escolar', 's.titular_profesor_id', 'tp.nombres', 'tp.apellidos')
+            ->selectRaw("s.id, s.nombre, s.grado, s.anio_escolar, s.titular_profesor_id, TRIM(CONCAT(COALESCE(tp.nombres, ''), ' ', COALESCE(tp.apellidos, ''))) as titular, COUNT(DISTINCT a.id) as total_alumnos, COUNT(DISTINCT ag.materia_id) as total_materias, ROUND(AVG(sf.nota_final), 1) as promedio")
             ->orderBy('s.id')
             ->get();
     }
@@ -378,6 +390,9 @@ class PanelController extends Controller
     {
         return DB::table('profesores as p')
             ->where('p.activo', true)
+            ->leftJoin('usuarios as u', function ($join) {
+                $join->on('u.id', '=', 'p.usuario_id')->where('u.activo', true);
+            })
             ->leftJoin('asignaciones as ag', function ($join) {
                 $join->on('ag.profesor_id', '=', 'p.id')->where('ag.activo', true);
             })
@@ -387,8 +402,11 @@ class PanelController extends Controller
             ->leftJoin('secciones as s', function ($join) {
                 $join->on('s.id', '=', 'ag.seccion_id')->where('s.activo', true);
             })
-            ->groupBy('p.id', 'p.nombres', 'p.apellidos', 'p.especialidad', 'p.email')
-            ->selectRaw("p.id, p.nombres, p.apellidos, p.especialidad, p.email, COUNT(DISTINCT ag.id) as total_asignaciones, COUNT(DISTINCT s.id) as total_secciones, GROUP_CONCAT(DISTINCT m.nombre ORDER BY m.nombre SEPARATOR ' | ') as materias")
+            ->leftJoin('secciones as st', function ($join) {
+                $join->on('st.titular_profesor_id', '=', 'p.id')->where('st.activo', true);
+            })
+            ->groupBy('p.id', 'p.usuario_id', 'p.nombres', 'p.apellidos', 'p.especialidad', 'p.email', 'u.nombre_usuario')
+            ->selectRaw("p.id, p.usuario_id, p.nombres, p.apellidos, p.especialidad, p.email, u.nombre_usuario, COUNT(DISTINCT ag.id) as total_asignaciones, COUNT(DISTINCT s.id) as total_secciones, COUNT(DISTINCT st.id) as total_titularidades, GROUP_CONCAT(DISTINCT m.nombre ORDER BY m.nombre SEPARATOR ' | ') as materias")
             ->orderBy('p.id')
             ->get();
     }
@@ -436,6 +454,7 @@ class PanelController extends Controller
     {
         return DB::table('asignaciones as ag')
             ->where('ag.activo', true)
+            ->when($this->professorUserActive(), fn ($query) => $query->where('ag.profesor_id', $this->currentTeacherId() ?? -1))
             ->join('secciones as s', function ($join) {
                 $join->on('s.id', '=', 'ag.seccion_id')->where('s.activo', true);
             })
@@ -582,6 +601,7 @@ class PanelController extends Controller
     {
         return DB::table('asignaciones')
             ->where('activo', true)
+            ->when($this->professorUserActive(), fn ($query) => $query->where('profesor_id', $this->currentTeacherId() ?? -1))
             ->select('anio_escolar')
             ->distinct()
             ->orderByDesc('anio_escolar')
@@ -973,6 +993,7 @@ class PanelController extends Controller
     {
         return DB::table('asignaciones as ag')
             ->where('ag.activo', true)
+            ->when($this->professorUserActive(), fn ($query) => $query->where('ag.profesor_id', $this->currentTeacherId() ?? -1))
             ->join('materias as m', function ($join) {
                 $join->on('m.id', '=', 'ag.materia_id')->where('m.activo', true);
             })
@@ -992,6 +1013,7 @@ class PanelController extends Controller
 
         return DB::table('asignaciones as ag')
             ->where('ag.activo', true)
+            ->when($this->professorUserActive(), fn ($query) => $query->where('ag.profesor_id', $this->currentTeacherId() ?? -1))
             ->join('materias as m', function ($join) {
                 $join->on('m.id', '=', 'ag.materia_id')->where('m.activo', true);
             })
@@ -1007,5 +1029,26 @@ class PanelController extends Controller
             ->select('ag.id', 'ag.seccion_id', 'ag.materia_id', 'ag.anio_escolar', 'm.nombre as materia', 'm.plantilla_colector', 's.grado', 's.nombre as seccion', DB::raw("CONCAT(p.nombres, ' ', p.apellidos) as profesor"))
             ->orderBy('ag.id')
             ->first();
+    }
+
+    private function currentTeacherId(): ?int
+    {
+        $user = Auth::user();
+
+        if (! $user || ! $user->isProfessor()) {
+            return null;
+        }
+
+        $teacherId = DB::table('profesores')
+            ->where('usuario_id', $user->id)
+            ->where('activo', true)
+            ->value('id');
+
+        return $teacherId ? (int) $teacherId : null;
+    }
+
+    private function professorUserActive(): bool
+    {
+        return Auth::user()?->isProfessor() === true;
     }
 }
