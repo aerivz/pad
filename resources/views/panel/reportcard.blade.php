@@ -27,11 +27,10 @@
                 </select>
             </div>
             <div class="col-md-3">
-                <label>Trimestre</label>
-                <select name="trimestre_id" class="form-control">
-                    <option value="">Todos</option>
-                    @foreach ($reportTrimesters as $trimester)
-                        <option value="{{ $trimester->id }}" @selected(($reportFilters['trimestre_id'] ?? null) == $trimester->id)>{{ $trimester->nombre }}</option>
+                <label>Periodo</label>
+                <select name="periodo" class="form-control">
+                    @foreach ($reportPeriodOptions as $option)
+                        <option value="{{ $option['value'] }}" @selected(($reportFilters['periodo'] ?? '') === $option['value'])>{{ $option['label'] }}</option>
                     @endforeach
                 </select>
             </div>
@@ -52,6 +51,9 @@
                 @endif
             </div>
         </form>
+        <div class="mt-3 text-muted small">
+            Vista actual: <strong>{{ $reportSelectedPeriodLabel }}</strong>.
+        </div>
     </div>
 </div>
 

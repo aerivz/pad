@@ -24,6 +24,7 @@
     .collector-grid-scroll thead th { background: #f8f9fa; }
     .collector-grid-fixed tbody td,
     .collector-grid-scroll tbody td { height: 70px; }
+    .collector-readonly .grade-input[disabled] { background: #f8fafc; color: #475569; opacity: 1; }
 </style>
 @endpush
 
@@ -31,12 +32,13 @@
 @php
     $selectedTemplateKey = old('template_key', $selectedAssignment->plantilla_colector ?? $categoryTemplates->keys()->first());
     $selectedTemplate = $selectedTemplateKey ? $categoryTemplates->get($selectedTemplateKey) : null;
+    $readOnlyGradeBook = ! $canEditGradeBook;
 @endphp
 <div class="card">
     <div class="card-body">
         <form method="GET" action="/pad/notas" class="row">
             <div class="col-md-3">
-                <label>Año lectivo</label>
+                <label>Anio lectivo</label>
                 <select name="anio_escolar" class="form-control" onchange="this.form.submit()">
                     @foreach ($academicYears as $year)
                         <option value="{{ $year }}" @selected((int) $selectedYear === (int) $year)>{{ $year }}</option>
@@ -60,10 +62,10 @@
                 </select>
             </div>
             <div class="col-md-2">
-                <label>Trimestre</label>
-                <select name="trimestre_id" class="form-control">
-                    @foreach ($trimesters as $trimester)
-                        <option value="{{ $trimester->id }}" @selected((int) $selectedTrimesterId === (int) $trimester->id)>{{ $trimester->nombre }}</option>
+                <label>Periodo</label>
+                <select name="periodo" class="form-control">
+                    @foreach ($periodOptions as $option)
+                        <option value="{{ $option['value'] }}" @selected($selectedPeriod === $option['value'])>{{ $option['label'] }}</option>
                     @endforeach
                 </select>
             </div>
@@ -71,13 +73,40 @@
                 <button class="btn btn-outline-primary btn-block">Ver</button>
             </div>
         </form>
+
+        @if ($selectedAssignment && $canViewGradeBook)
+            <div class="row mt-3">
+                <div class="col-md-12">
+                    <div class="d-flex flex-wrap align-items-center justify-content-between px-3 py-2 rounded border bg-light" style="gap: .75rem;">
+                        <div class="text-muted small">
+                            Resumen anual de la materia con ponderacion 20/20/20/20/10/10.
+                        </div>
+                        @if ($periodExamMeta)
+                            <div class="small">
+                                <strong>{{ $periodExamMeta['label'] }}</strong> se captura en este trimestre y vale <strong>{{ $periodExamMeta['weight'] }}%</strong>.
+                            </div>
+                        @else
+                            <div class="small">
+                                <strong>{{ $selectedPeriodLabel }}</strong> seleccionado para captura del colector.
+                            </div>
+                        @endif
+                    </div>
+                </div>
+            </div>
+        @endif
     </div>
 </div>
 
-@if (! $selectedAssignment)
-    <div class="alert alert-warning">No existe asignacion activa para el año, seccion y materia seleccionados.</div>
+@if (! $selectedAssignment || ! $canViewGradeBook)
+    <div class="alert alert-warning">No existe asignacion activa para el anio, seccion y materia seleccionados.</div>
 @else
-    @if ($gradeBoard['percentage_total'] < 100)
+    @if ($readOnlyGradeBook)
+        <div class="alert alert-info">
+            Vista en modo consulta. Como profesor titular puedes revisar notas de toda tu seccion, pero solo podras modificarlas si esta materia esta asignada a tu usuario.
+        </div>
+    @endif
+
+    @if ($selectedPeriodType === 'trimester' && $gradeBoard['percentage_total'] < 100)
         <div class="alert alert-warning">
             Configuracion incompleta. Categorias suman <strong>{{ rtrim(rtrim(number_format($gradeBoard['percentage_total'], 2), '0'), '.') }}%</strong>.
             No se calculara Report Card hasta llegar a 100%.
@@ -87,51 +116,66 @@
     <div class="card collector-toolbar-card">
         <div class="card-body">
             <div class="collector-toolbar-meta">
-                {{ $selectedAssignment->materia }} | {{ $selectedAssignment->grado }} {{ $selectedAssignment->seccion }} | {{ $selectedAssignment->profesor }} | Año {{ $selectedAssignment->anio_escolar }}
+                {{ $selectedAssignment->materia }} | {{ $selectedAssignment->grado }} {{ $selectedAssignment->seccion }} | {{ $selectedAssignment->profesor }} | Anio {{ $selectedAssignment->anio_escolar }}
             </div>
             <div class="action-toolbar">
                 <a href="/pad/notas/plantillas/colector" class="btn btn-outline-success btn-sm"><i class="fas fa-file-csv mr-1"></i>Descargar plantilla</a>
                 <a href="/pad/notas/plantillas/normalizado" class="btn btn-outline-info btn-sm"><i class="fas fa-file-download mr-1"></i>Descargar activos</a>
                 <a href="{{ \App\Support\AppUrl::route('collector-templates.index') }}" class="btn btn-outline-dark btn-sm"><i class="fas fa-cogs mr-1"></i>Plantillas de notas</a>
-                <button type="button" class="btn btn-outline-secondary btn-sm" data-toggle="modal" data-target="#templateApplyModal"><i class="fas fa-layer-group mr-1"></i>{{ $selectedTemplate ? 'Aplicar plantilla de materia' : 'Aplicar plantilla' }}</button>
-                <button type="button" class="btn btn-outline-warning btn-sm" data-toggle="modal" data-target="#categoriesModal"><i class="fas fa-sync-alt mr-1"></i>Categorias configuradas</button>
-                <button type="button" class="btn btn-outline-primary btn-sm" data-toggle="modal" data-target="#importModal"><i class="fas fa-file-import mr-1"></i>Importacion masiva</button>
-                <button type="button" class="btn btn-success btn-sm" data-toggle="modal" data-target="#categoryModal"><i class="fas fa-plus mr-1"></i>{{ $editCategory ? 'Editar categoria' : 'Nueva categoria' }}</button>
+                @if ($canEditGradeBook)
+                    <button type="button" class="btn btn-outline-secondary btn-sm" data-toggle="modal" data-target="#templateApplyModal"><i class="fas fa-layer-group mr-1"></i>{{ $selectedTemplate ? 'Aplicar plantilla de materia' : 'Aplicar plantilla' }}</button>
+                    <button type="button" class="btn btn-outline-warning btn-sm" data-toggle="modal" data-target="#categoriesModal"><i class="fas fa-sync-alt mr-1"></i>Categorias configuradas</button>
+                    <button type="button" class="btn btn-outline-primary btn-sm" data-toggle="modal" data-target="#importModal"><i class="fas fa-file-import mr-1"></i>Importacion masiva</button>
+                    <button type="button" class="btn btn-success btn-sm" data-toggle="modal" data-target="#categoryModal"><i class="fas fa-plus mr-1"></i>{{ $editCategory ? 'Editar categoria' : 'Nueva categoria' }}</button>
+                @endif
             </div>
         </div>
     </div>
 
-    <div class="card collector-table-card">
+    <div class="card collector-table-card {{ $readOnlyGradeBook ? 'collector-readonly' : '' }}">
         <div class="card-header">
-            <h3 class="card-title">Colector de notas</h3>
-            <div class="card-tools text-muted small">Total configurado: {{ rtrim(rtrim(number_format($gradeBoard['percentage_total'], 2), '0'), '.') }}% | {{ $gradeBoard['can_calculate_report'] ? 'Report Card activo' : 'Falta completar 100%' }}</div>
+            <h3 class="card-title">{{ $selectedPeriodType === 'exam' ? $selectedPeriodLabel : 'Colector de notas' }}</h3>
+            <div class="card-tools text-muted small">
+                @if ($selectedPeriodType === 'trimester')
+                    Total configurado: {{ rtrim(rtrim(number_format($gradeBoard['percentage_total'], 2), '0'), '.') }}% | {{ $gradeBoard['can_calculate_report'] ? 'Report Card activo' : 'Falta completar 100%' }}
+                @else
+                    Captura separada del periodo anual.
+                @endif
+            </div>
         </div>
         <div class="card-body">
-            @if ($categories->count() === 0)
+            @if ($selectedPeriodType === 'trimester' && $categories->count() === 0)
                 @if ($selectedTemplate)
                     <div class="alert alert-info m-3 d-flex justify-content-between align-items-center flex-wrap" style="gap: .75rem;">
                         <div>
                             Materia tiene plantilla <strong>{{ $selectedTemplate['name'] }}</strong>, pero aun no se ha aplicado a este trimestre.
-                            Presiona boton para crear categorias y completar 100%.
+                            @if ($canEditGradeBook)
+                                Presiona boton para crear categorias y completar 100%.
+                            @else
+                                Esta vista es solo de consulta.
+                            @endif
                         </div>
-                        <form method="POST" action="/pad/notas/plantillas/aplicar" class="mb-0">
-                            @csrf
-                            <input type="hidden" name="asignacion_id" value="{{ $selectedAssignmentId }}">
-                            <input type="hidden" name="trimestre_id" value="{{ $selectedTrimesterId }}">
-                            <input type="hidden" name="template_key" value="{{ $selectedTemplateKey }}">
-                            <button class="btn btn-secondary btn-sm">
-                                <i class="fas fa-layer-group mr-1"></i>Aplicar {{ $selectedTemplate['name'] }}
-                            </button>
-                        </form>
+                        @if ($canEditGradeBook)
+                            <form method="POST" action="/pad/notas/plantillas/aplicar" class="mb-0">
+                                @csrf
+                                <input type="hidden" name="asignacion_id" value="{{ $selectedAssignmentId }}">
+                                <input type="hidden" name="trimestre_id" value="{{ $selectedTrimesterId }}">
+                                <input type="hidden" name="template_key" value="{{ $selectedTemplateKey }}">
+                                <button class="btn btn-secondary btn-sm">
+                                    <i class="fas fa-layer-group mr-1"></i>Aplicar {{ $selectedTemplate['name'] }}
+                                </button>
+                            </form>
+                        @endif
                     </div>
                 @else
                     <div class="alert alert-info m-3">Crea categorias primero. Luego podras capturar notas y conducta por alumno.</div>
                 @endif
-            @else
+            @elseif ($selectedPeriodType === 'trimester')
                 <form method="POST" action="/pad/notas/calificaciones">
                     @csrf
                     <input type="hidden" name="asignacion_id" value="{{ $selectedAssignmentId }}">
                     <input type="hidden" name="trimestre_id" value="{{ $selectedTrimesterId }}">
+                    <input type="hidden" name="periodo" value="{{ $selectedPeriod }}">
 
                     <div class="collector-grid">
                         <div class="collector-grid-fixed">
@@ -195,33 +239,33 @@
                                             @foreach ($gradeBoard['categories'] as $category)
                                                 @php($categoryScore = $row['categories'][$category->id] ?? [])
                                                 <td class="text-center">
-                                                    <input type="number" step="0.01" min="0" max="100" name="grades[{{ $row['id'] }}][{{ $category->id }}][nota_1]" class="form-control form-control-sm grade-input" value="{{ old('grades.'.$row['id'].'.'.$category->id.'.nota_1', $categoryScore['nota_1'] ?? '') }}">
+                                                    <input type="number" step="0.01" min="0" max="100" name="grades[{{ $row['id'] }}][{{ $category->id }}][nota_1]" class="form-control form-control-sm grade-input" value="{{ old('grades.'.$row['id'].'.'.$category->id.'.nota_1', $categoryScore['nota_1'] ?? '') }}" @disabled($readOnlyGradeBook)>
                                                 </td>
                                                 @if ($category->tipo_calculo === 'normal')
                                                     <td class="text-center">
-                                                        <input type="number" step="0.01" min="0" max="100" name="grades[{{ $row['id'] }}][{{ $category->id }}][nota_2]" class="form-control form-control-sm grade-input" value="{{ old('grades.'.$row['id'].'.'.$category->id.'.nota_2', $categoryScore['nota_2'] ?? '') }}">
+                                                        <input type="number" step="0.01" min="0" max="100" name="grades[{{ $row['id'] }}][{{ $category->id }}][nota_2]" class="form-control form-control-sm grade-input" value="{{ old('grades.'.$row['id'].'.'.$category->id.'.nota_2', $categoryScore['nota_2'] ?? '') }}" @disabled($readOnlyGradeBook)>
                                                     </td>
                                                 @endif
-                                                <td class="final-cell">{{ $categoryScore['promedio_1'] ?? '—' }}</td>
+                                                <td class="final-cell">{{ $categoryScore['promedio_1'] ?? '-' }}</td>
                                                 @if ($category->tipo_calculo === 'normal')
                                                     <td class="text-center">
-                                                        <input type="number" step="0.01" min="0" max="100" name="grades[{{ $row['id'] }}][{{ $category->id }}][nota_3]" class="form-control form-control-sm grade-input" value="{{ old('grades.'.$row['id'].'.'.$category->id.'.nota_3', $categoryScore['nota_3'] ?? '') }}">
+                                                        <input type="number" step="0.01" min="0" max="100" name="grades[{{ $row['id'] }}][{{ $category->id }}][nota_3]" class="form-control form-control-sm grade-input" value="{{ old('grades.'.$row['id'].'.'.$category->id.'.nota_3', $categoryScore['nota_3'] ?? '') }}" @disabled($readOnlyGradeBook)>
                                                     </td>
                                                     <td class="text-center">
-                                                        <input type="number" step="0.01" min="0" max="100" name="grades[{{ $row['id'] }}][{{ $category->id }}][nota_4]" class="form-control form-control-sm grade-input" value="{{ old('grades.'.$row['id'].'.'.$category->id.'.nota_4', $categoryScore['nota_4'] ?? '') }}">
+                                                        <input type="number" step="0.01" min="0" max="100" name="grades[{{ $row['id'] }}][{{ $category->id }}][nota_4]" class="form-control form-control-sm grade-input" value="{{ old('grades.'.$row['id'].'.'.$category->id.'.nota_4', $categoryScore['nota_4'] ?? '') }}" @disabled($readOnlyGradeBook)>
                                                     </td>
                                                 @else
                                                     <td class="text-center">
-                                                        <input type="number" step="0.01" min="0" max="100" name="grades[{{ $row['id'] }}][{{ $category->id }}][nota_2]" class="form-control form-control-sm grade-input" value="{{ old('grades.'.$row['id'].'.'.$category->id.'.nota_2', $categoryScore['nota_2'] ?? '') }}">
+                                                        <input type="number" step="0.01" min="0" max="100" name="grades[{{ $row['id'] }}][{{ $category->id }}][nota_2]" class="form-control form-control-sm grade-input" value="{{ old('grades.'.$row['id'].'.'.$category->id.'.nota_2', $categoryScore['nota_2'] ?? '') }}" @disabled($readOnlyGradeBook)>
                                                     </td>
                                                 @endif
-                                                <td class="final-cell">{{ $categoryScore['promedio_2'] ?? '—' }}</td>
+                                                <td class="final-cell">{{ $categoryScore['promedio_2'] ?? '-' }}</td>
                                             @endforeach
                                             <td class="final-cell">{{ $row['progress_1'] }}</td>
                                             <td class="final-cell">{{ $row['progress_2'] }}</td>
-                                            <td class="final-cell">{{ $row['report_card'] ?? '—' }}</td>
+                                            <td class="final-cell">{{ $row['report_card'] ?? '-' }}</td>
                                             <td class="text-center">
-                                                <input type="number" step="0.01" min="0" max="100" name="conduct[{{ $row['id'] }}]" class="form-control form-control-sm grade-input" value="{{ old('conduct.'.$row['id'], $row['conducta'] ?? '') }}">
+                                                <input type="number" step="0.01" min="0" max="100" name="conduct[{{ $row['id'] }}]" class="form-control form-control-sm grade-input" value="{{ old('conduct.'.$row['id'], $row['conducta'] ?? '') }}" @disabled($readOnlyGradeBook)>
                                             </td>
                                         </tr>
                                     @endforeach
@@ -231,15 +275,105 @@
                         </div>
                     </div>
 
-                    <div class="p-3 border-top">
-                        <button class="btn btn-success btn-sm">Guardar colector</button>
+                    @if ($canEditGradeBook)
+                        <div class="p-3 border-top">
+                            <button class="btn btn-success btn-sm">Guardar colector</button>
+                        </div>
+                    @endif
+                </form>
+            @else
+                <form method="POST" action="/pad/notas/calificaciones">
+                    @csrf
+                    <input type="hidden" name="asignacion_id" value="{{ $selectedAssignmentId }}">
+                    <input type="hidden" name="trimestre_id" value="{{ $selectedTrimesterId }}">
+                    <input type="hidden" name="periodo" value="{{ $selectedPeriod }}">
+
+                    <div class="p-3 bg-white">
+                        <div class="d-flex align-items-center justify-content-between flex-wrap mb-2" style="gap:.75rem;">
+                            <h4 class="mb-0" style="font-size:1rem;">{{ $periodExamMeta['label'] }}</h4>
+                            <small class="text-muted">Captura separada del trimestre. Este examen aporta {{ $periodExamMeta['weight'] }}% al promedio anual de la materia.</small>
+                        </div>
+                        <div class="table-responsive">
+                            <table class="table table-bordered table-sm mb-0">
+                                <thead class="bg-light">
+                                    <tr>
+                                        <th style="width:72px;">#</th>
+                                        <th>Alumno</th>
+                                        <th class="text-center" style="width:180px;">{{ $periodExamMeta['label'] }}</th>
+                                    </tr>
+                                </thead>
+                                <tbody>
+                                @foreach ($gradeBoard['rows'] as $row)
+                                    <tr>
+                                        <td>{{ $row['id'] }}</td>
+                                        <td>{{ $row['nombre'] }}</td>
+                                        <td class="text-center">
+                                            <input type="number" step="0.01" min="0" max="100" name="period_exam[{{ $row['id'] }}]" class="form-control form-control-sm grade-input mx-auto" value="{{ old('period_exam.'.$row['id'], $row['period_exam'] ?? '') }}" @disabled($readOnlyGradeBook)>
+                                        </td>
+                                    </tr>
+                                @endforeach
+                                </tbody>
+                            </table>
+                        </div>
                     </div>
+
+                    @if ($canEditGradeBook)
+                        <div class="p-3 border-top">
+                            <button class="btn btn-success btn-sm">Guardar {{ $periodExamMeta['label'] }}</button>
+                        </div>
+                    @endif
                 </form>
             @endif
+
+            <div class="border-top p-3 bg-white">
+                    <div class="d-flex align-items-center justify-content-between flex-wrap mb-2" style="gap:.75rem;">
+                        <h4 class="mb-0" style="font-size:1rem;">Resumen anual preliminar</h4>
+                        <small class="text-muted">Promedio por alumno para esta materia. Usa T1-T4 20% c/u, examen semestral 10% y examen final 10%.</small>
+                    </div>
+                    <div class="table-responsive">
+                        <table class="table table-bordered table-sm mb-0">
+                            <thead class="bg-light">
+                                <tr>
+                                    <th style="width:72px;">#</th>
+                                    <th>Alumno</th>
+                                    <th class="text-center">Avance anual</th>
+                                    <th class="text-center">Peso capturado</th>
+                                    <th class="text-center">Estado</th>
+                                </tr>
+                            </thead>
+                            <tbody>
+                            @foreach ($gradeBoard['rows'] as $row)
+                                <tr>
+                                    <td>{{ $row['id'] }}</td>
+                                    <td>{{ $row['nombre'] }}</td>
+                                    <td class="text-center">
+                                        @if ($row['annual_average'] !== null)
+                                            <span class="score-badge {{ $row['annual_average'] >= 85 ? 'score-high' : ($row['annual_average'] >= 70 ? 'score-mid' : 'score-low') }}">{{ $row['annual_average'] }}</span>
+                                        @else
+                                            <span class="text-muted">-</span>
+                                        @endif
+                                    </td>
+                                    <td class="text-center">{{ $row['annual_captured_weight'] }}%</td>
+                                    <td class="text-center">
+                                        @if ($row['annual_average_final'] !== null)
+                                            <span class="badge badge-success">Completo</span>
+                                        @elseif ($row['annual_average'] !== null)
+                                            <span class="badge badge-warning">Preliminar</span>
+                                        @else
+                                            <span class="badge badge-secondary">Sin datos</span>
+                                        @endif
+                                    </td>
+                                </tr>
+                            @endforeach
+                            </tbody>
+                        </table>
+                    </div>
+                </div>
         </div>
     </div>
 @endif
 
+@if ($canEditGradeBook)
 <div class="modal fade" id="templateApplyModal" tabindex="-1" aria-hidden="true">
     <div class="modal-dialog modal-lg modal-dialog-scrollable">
         <div class="modal-content">
@@ -414,6 +548,7 @@
         </div>
     </div>
 </div>
+@endif
 @endsection
 
 @push('scripts')
@@ -469,7 +604,7 @@
         syncCollectorHeights();
         window.addEventListener('resize', syncCollectorHeights);
 
-        @if ($editCategory)
+        @if ($canEditGradeBook && $editCategory)
             $('#categoryModal').modal('show');
         @endif
     });

@@ -5,6 +5,7 @@ namespace App\Http\Controllers;
 use App\Models\CollectorCategory;
 use App\Models\StudentCategoryGrade;
 use App\Models\StudentConduct;
+use App\Models\StudentPeriodExam;
 use App\Models\User;
 use App\Services\GradeCollectorImportService;
 use App\Services\GradeCollectorService;
@@ -22,7 +23,7 @@ class EvaluationController extends Controller
     public function store(Request $request): RedirectResponse
     {
         $data = $this->validateCategory($request);
-        $this->guardAssignmentAccess((int) $data['asignacion_id']);
+        $this->guardAssignmentEditAccess((int) $data['asignacion_id']);
         $this->guardCategoryPercentage($data['asignacion_id'], $data['trimestre_id'], (float) $data['porcentaje']);
 
         CollectorCategory::query()->create([
@@ -38,7 +39,7 @@ class EvaluationController extends Controller
     public function update(Request $request, CollectorCategory $evaluation): RedirectResponse
     {
         $data = $this->validateCategory($request, $evaluation);
-        $this->guardAssignmentAccess((int) $data['asignacion_id']);
+        $this->guardAssignmentEditAccess((int) $data['asignacion_id']);
         $this->guardCategoryPercentage($data['asignacion_id'], $data['trimestre_id'], (float) $data['porcentaje'], $evaluation->id);
 
         $evaluation->update([
@@ -52,7 +53,7 @@ class EvaluationController extends Controller
 
     public function destroy(CollectorCategory $evaluation): RedirectResponse
     {
-        $this->guardAssignmentAccess((int) $evaluation->asignacion_id);
+        $this->guardAssignmentEditAccess((int) $evaluation->asignacion_id);
 
         DB::transaction(function () use ($evaluation): void {
             $evaluation->update(['activo' => false]);
@@ -73,6 +74,7 @@ class EvaluationController extends Controller
         $data = $request->validate([
             'asignacion_id' => ['required', 'integer', 'exists:asignaciones,id'],
             'trimestre_id' => ['required', 'integer', 'exists:trimestres,id'],
+            'periodo' => ['nullable', 'string', 'max:40'],
             'grades' => ['nullable', 'array'],
             'grades.*' => ['array'],
             'grades.*.*' => ['array'],
@@ -82,8 +84,12 @@ class EvaluationController extends Controller
             'grades.*.*.nota_4' => ['nullable', 'numeric', 'min:0', 'max:100'],
             'conduct' => ['nullable', 'array'],
             'conduct.*' => ['nullable', 'numeric', 'min:0', 'max:100'],
+            'period_exam' => ['nullable', 'array'],
+            'period_exam.*' => ['nullable', 'numeric', 'min:0', 'max:100'],
         ]);
-        $this->guardAssignmentAccess((int) $data['asignacion_id']);
+        $this->guardAssignmentEditAccess((int) $data['asignacion_id']);
+
+        $periodExamType = $this->resolvePeriodExamType($data);
 
         $categories = CollectorCategory::query()
             ->where('asignacion_id', $data['asignacion_id'])
@@ -92,7 +98,7 @@ class EvaluationController extends Controller
             ->get()
             ->keyBy('id');
 
-        DB::transaction(function () use ($data, $categories): void {
+        DB::transaction(function () use ($data, $categories, $periodExamType): void {
             foreach (($data['grades'] ?? []) as $studentId => $studentCategories) {
                 foreach ($studentCategories as $categoryId => $notes) {
                     $category = $categories->get((int) $categoryId);
@@ -148,6 +154,33 @@ class EvaluationController extends Controller
                     ]);
                 }
             }
+
+            if ($periodExamType !== null) {
+                foreach (($data['period_exam'] ?? []) as $studentId => $value) {
+                    $numericValue = $this->gradeCollectorService()->nullableNumber($value);
+                    $payload = [
+                        'valor' => $numericValue,
+                        'activo' => $numericValue !== null,
+                    ];
+
+                    $periodExam = StudentPeriodExam::query()
+                        ->where('asignacion_id', $data['asignacion_id'])
+                        ->where('alumno_id', $studentId)
+                        ->where('tipo', $periodExamType)
+                        ->first();
+
+                    if ($periodExam) {
+                        $periodExam->update($payload);
+                    } elseif ($payload['activo']) {
+                        StudentPeriodExam::query()->create([
+                            'asignacion_id' => $data['asignacion_id'],
+                            'alumno_id' => $studentId,
+                            'tipo' => $periodExamType,
+                            ...$payload,
+                        ]);
+                    }
+                }
+            }
         });
 
         return redirect($this->gradebookRedirect($data))
@@ -162,7 +195,7 @@ class EvaluationController extends Controller
             'archivo' => ['required', 'file', 'max:10240'],
             'limpiar_antes_importar' => ['nullable', 'boolean'],
         ]);
-        $this->guardAssignmentAccess((int) $data['asignacion_id']);
+        $this->guardAssignmentEditAccess((int) $data['asignacion_id']);
 
         try {
             $summary = $importService->import(
@@ -216,7 +249,7 @@ class EvaluationController extends Controller
             'template_key' => ['required', 'string'],
             'reemplazar_existentes' => ['nullable', 'boolean'],
         ]);
-        $this->guardAssignmentAccess((int) $data['asignacion_id']);
+        $this->guardAssignmentEditAccess((int) $data['asignacion_id']);
 
         $template = $this->collectorTemplateCatalog()->findByCode($data['template_key']);
 
@@ -334,10 +367,16 @@ class EvaluationController extends Controller
 
     private function gradebookRedirect(array $data): string
     {
-        return '/pad/notas?anio_escolar='.$this->assignmentYear((int) $data['asignacion_id'])
+        $url = '/pad/notas?anio_escolar='.$this->assignmentYear((int) $data['asignacion_id'])
             .'&seccion_id='.$this->assignmentSection((int) $data['asignacion_id'])
             .'&materia_id='.$this->assignmentSubject((int) $data['asignacion_id'])
             .'&trimestre_id='.(int) $data['trimestre_id'];
+
+        if (! empty($data['periodo'])) {
+            $url .= '&periodo='.urlencode((string) $data['periodo']);
+        }
+
+        return $url;
     }
 
     private function assignmentYear(int $assignmentId): int
@@ -360,12 +399,44 @@ class EvaluationController extends Controller
         return app(GradeCollectorService::class);
     }
 
+    private function periodExamType(int $trimesterId): ?string
+    {
+        $trimesterNumber = (int) DB::table('trimestres')
+            ->where('id', $trimesterId)
+            ->value('numero');
+
+        if (in_array($trimesterNumber, [1, 2], true)) {
+            return 'semestral';
+        }
+
+        if (in_array($trimesterNumber, [3, 4], true)) {
+            return 'final';
+        }
+
+        return null;
+    }
+
+    private function resolvePeriodExamType(array $data): ?string
+    {
+        $selectedPeriod = (string) ($data['periodo'] ?? '');
+
+        if ($selectedPeriod === 'exam:semestral') {
+            return 'semestral';
+        }
+
+        if ($selectedPeriod === 'exam:final') {
+            return 'final';
+        }
+
+        return $this->periodExamType((int) $data['trimestre_id']);
+    }
+
     private function collectorTemplateCatalog(): CollectorTemplateCatalog
     {
         return app(CollectorTemplateCatalog::class);
     }
 
-    private function guardAssignmentAccess(int $assignmentId): void
+    private function guardAssignmentEditAccess(int $assignmentId): void
     {
         $user = auth()->user();
 
