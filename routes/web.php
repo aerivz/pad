@@ -15,6 +15,7 @@ use App\Http\Controllers\SectionController;
 use App\Http\Controllers\StudentController;
 use App\Http\Controllers\SubjectController;
 use App\Http\Controllers\SystemBackupController;
+use App\Http\Controllers\SystemConfigurationController;
 use App\Http\Controllers\TeacherController;
 use App\Http\Controllers\UserManagementController;
 use App\Models\Menu;
@@ -113,6 +114,7 @@ Route::middleware('auth')->group(function () {
 
     Route::get('/correos', [PanelController::class, 'emails'])->middleware('menu.access:emails')->name('emails.index');
     Route::post('/correos', [EmailDispatchController::class, 'store'])->middleware('menu.access:emails')->name('emails.store');
+    Route::post('/correos/{dispatch}/enviar', [EmailDispatchController::class, 'send'])->middleware('menu.access:emails')->name('emails.send');
     Route::patch('/correos/{dispatch}', [EmailDispatchController::class, 'update'])->middleware('menu.access:emails')->name('emails.update');
     Route::delete('/correos/{dispatch}', [EmailDispatchController::class, 'destroy'])->middleware('menu.access:emails')->name('emails.destroy');
     Route::post('/correos/plantillas', [EmailTemplateController::class, 'store'])->middleware('menu.access:emails')->name('emails.templates.store');
@@ -139,6 +141,8 @@ Route::middleware('auth')->group(function () {
     Route::get('/backups/{backup}/download', [SystemBackupController::class, 'download'])->middleware('menu.access:backups')->name('backups.download');
 
     Route::get('/configuracion', [PanelController::class, 'config'])->middleware('menu.access:config')->name('config.index');
+    Route::put('/configuracion', [SystemConfigurationController::class, 'update'])->middleware('menu.access:config')->name('config.update');
+    Route::post('/configuracion/correo-prueba', [SystemConfigurationController::class, 'sendTest'])->middleware('menu.access:config')->name('config.email-test');
 });
 
 Route::prefix('pad')->middleware('auth')->group(function () {
@@ -194,6 +198,7 @@ Route::prefix('pad')->middleware('auth')->group(function () {
 
     Route::get('/correos', [PanelController::class, 'emails'])->middleware('menu.access:emails');
     Route::post('/correos', [EmailDispatchController::class, 'store'])->middleware('menu.access:emails');
+    Route::post('/correos/{dispatch}/enviar', [EmailDispatchController::class, 'send'])->middleware('menu.access:emails');
     Route::patch('/correos/{dispatch}', [EmailDispatchController::class, 'update'])->middleware('menu.access:emails');
     Route::delete('/correos/{dispatch}', [EmailDispatchController::class, 'destroy'])->middleware('menu.access:emails');
     Route::post('/correos/plantillas', [EmailTemplateController::class, 'store'])->middleware('menu.access:emails');
@@ -220,4 +225,6 @@ Route::prefix('pad')->middleware('auth')->group(function () {
     Route::get('/backups/{backup}/download', [SystemBackupController::class, 'download'])->middleware('menu.access:backups');
 
     Route::get('/configuracion', [PanelController::class, 'config'])->middleware('menu.access:config');
+    Route::put('/configuracion', [SystemConfigurationController::class, 'update'])->middleware('menu.access:config');
+    Route::post('/configuracion/correo-prueba', [SystemConfigurationController::class, 'sendTest'])->middleware('menu.access:config');
 });

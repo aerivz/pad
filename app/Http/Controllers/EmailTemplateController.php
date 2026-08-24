@@ -3,6 +3,7 @@
 namespace App\Http\Controllers;
 
 use App\Models\EmailTemplate;
+use App\Support\GeneratedDocumentCatalog;
 use App\Support\AppUrl;
 use Illuminate\Http\RedirectResponse;
 use Illuminate\Http\Request;
@@ -14,10 +15,11 @@ class EmailTemplateController extends Controller
     {
         $data = $this->validateTemplate($request);
 
-        EmailTemplate::create([
+        $template = EmailTemplate::create([
             ...$data,
             'activo' => true,
         ]);
+        $template->roles()->sync($data['roles'] ?? []);
 
         return redirect(AppUrl::route('emails.index'))->with('status', 'Plantilla creada correctamente.');
     }
@@ -27,6 +29,7 @@ class EmailTemplateController extends Controller
         $data = $this->validateTemplate($request, $template);
 
         $template->update($data);
+        $template->roles()->sync($data['roles'] ?? []);
 
         return redirect(AppUrl::route('emails.index'))->with('status', 'Plantilla actualizada correctamente.');
     }
@@ -47,8 +50,13 @@ class EmailTemplateController extends Controller
                 'max:100',
                 Rule::unique('plantillas_correo', 'nombre')->ignore($template?->id),
             ],
+            'descripcion' => ['nullable', 'string', 'max:255'],
             'asunto' => ['required', 'string', 'max:255'],
             'cuerpo_html' => ['required', 'string'],
+            'documentos_generados' => ['nullable', 'array'],
+            'documentos_generados.*' => ['string', Rule::in(app(GeneratedDocumentCatalog::class)->codes())],
+            'roles' => ['nullable', 'array'],
+            'roles.*' => ['integer', 'exists:roles,id'],
         ]);
     }
 }

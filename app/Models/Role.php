@@ -41,4 +41,9 @@ class Role extends Model
     {
         return $this->hasMany(User::class, 'rol_id');
     }
+
+    public function emailTemplates(): BelongsToMany
+    {
+        return $this->belongsToMany(EmailTemplate::class, 'plantilla_correo_rol', 'rol_id', 'plantilla_id');
+    }
 }

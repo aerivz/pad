@@ -7,6 +7,8 @@
     $emailStudentSectionId = collect($studentsForEmail)->firstWhere('id', (int) old('alumno_id', $editEmail->alumno_id ?? 0))->seccion_id ?? '';
     $emailFormVisible = $editEmail !== null || old('padre_id') !== null || old('alumno_id') !== null || old('trimestre_id') !== null || old('estado') !== null;
     $templateFormVisible = $editTemplate !== null || old('nombre') !== null || old('asunto') !== null || old('cuerpo_html') !== null;
+    $selectedTemplateRoles = collect(old('roles', $editTemplate?->roles?->pluck('id')->all() ?? []))->map(fn ($value) => (int) $value)->all();
+    $selectedTemplateDocuments = collect(old('documentos_generados', $editTemplate->documentos_generados ?? []))->map(fn ($value) => (string) $value)->all();
 @endphp
 
 <div class="card maint-card">
@@ -36,12 +38,35 @@
             </div>
             <div class="card-body table-responsive p-0">
                 <table class="table table-hover maint-table">
-                    <thead class="bg-light"><tr><th>#</th><th>Nombre</th><th>Asunto</th><th>Vista previa</th><th>Acciones</th></tr></thead>
+                    <thead class="bg-light"><tr><th>#</th><th>Nombre</th><th>Perfiles</th><th>Adjuntos</th><th>Asunto</th><th>Vista previa</th><th>Acciones</th></tr></thead>
                     <tbody>
                     @forelse ($templateCatalog as $template)
                         <tr>
                             <td>{{ $template->id }}</td>
                             <td><strong>{{ $template->nombre }}</strong></td>
+                            <td>
+                                @if ($template->roles->isEmpty())
+                                    <span class="badge badge-secondary">Todos</span>
+                                @else
+                                    <div class="d-flex flex-wrap" style="gap:.25rem;">
+                                        @foreach ($template->roles as $role)
+                                            <span class="badge badge-info">{{ $role->nombre }}</span>
+                                        @endforeach
+                                    </div>
+                                @endif
+                            </td>
+                            <td>
+                                @php($documentLabels = collect($template->documentos_generados ?? [])->map(fn ($code) => $generatedDocumentLabels[$code] ?? $code))
+                                @if ($documentLabels->isEmpty())
+                                    <span class="text-muted">Sin adjuntos</span>
+                                @else
+                                    <div class="d-flex flex-column">
+                                        @foreach ($documentLabels as $label)
+                                            <span>{{ $label }}</span>
+                                        @endforeach
+                                    </div>
+                                @endif
+                            </td>
                             <td>{{ $template->asunto }}</td>
                             <td><div style="max-width:320px; white-space:nowrap; overflow:hidden; text-overflow:ellipsis;">{{ strip_tags($template->cuerpo_html) }}</div></td>
                             <td class="maint-actions-cell">
@@ -50,7 +75,7 @@
                             </td>
                         </tr>
                     @empty
-                        <tr><td colspan="5" class="text-center text-muted">No hay plantillas activas.</td></tr>
+                        <tr><td colspan="7" class="text-center text-muted">No hay plantillas activas.</td></tr>
                     @endforelse
                     </tbody>
                 </table>
@@ -90,7 +115,7 @@
             </div>
             <div class="card-body table-responsive p-0">
                 <table class="table table-hover maint-table" id="emails-table">
-                    <thead class="bg-light"><tr><th>#</th><th>Familiar</th><th>Alumno</th><th>Plantilla</th><th>Trimestre</th><th>Estado</th><th>Acciones</th></tr></thead>
+                    <thead class="bg-light"><tr><th>#</th><th>Familiar</th><th>Alumno</th><th>Plantilla</th><th>Adjuntos</th><th>Trimestre</th><th>Estado</th><th>Resultado</th><th>Acciones</th></tr></thead>
                     <tbody>
                     @forelse ($emails as $email)
                         <tr data-filter-row data-text="{{ strtolower($email->nombres.' '.$email->apellidos.' '.$email->email_principal.' '.$email->alumno_nombres.' '.$email->alumno_apellidos.' '.$email->plantilla.' '.($email->parentesco ?? '')) }}" data-status="{{ strtolower($email->estado) }}" data-trimester="{{ strtolower($email->trimestre) }}">
@@ -98,6 +123,16 @@
                             <td><strong>{{ $email->nombres }} {{ $email->apellidos }}</strong><br><small>{{ $email->email_principal }}{{ $email->parentesco ? ' | '.$email->parentesco : '' }}</small></td>
                             <td>{{ $email->alumno_nombres }} {{ $email->alumno_apellidos }}</td>
                             <td>{{ $email->plantilla }}</td>
+                            <td>
+                                @php($dispatchDocuments = collect($email->adjuntos_generados ?? [])->map(fn ($code) => $generatedDocumentLabels[$code] ?? $code))
+                                @if ($dispatchDocuments->isEmpty())
+                                    <span class="text-muted">Sin adjuntos</span>
+                                @else
+                                    @foreach ($dispatchDocuments as $label)
+                                        <div>{{ $label }}</div>
+                                    @endforeach
+                                @endif
+                            </td>
                             <td>{{ $email->trimestre }}</td>
                             <td>
                                 @if ($email->estado === 'enviado')
@@ -108,17 +143,30 @@
                                     <span class="badge badge-danger">Fallido</span>
                                 @endif
                             </td>
+                            <td>
+                                @if ($email->estado === 'enviado')
+                                    <small class="text-success">{{ $email->destinatario_email ?? $email->email_principal }}</small>
+                                    @if ($email->enviado_en)
+                                        <div class="text-muted small">{{ \Illuminate\Support\Carbon::parse($email->enviado_en)->format('d/m/Y H:i') }}</div>
+                                    @endif
+                                @elseif ($email->error_mensaje)
+                                    <small class="text-danger">{{ \Illuminate\Support\Str::limit($email->error_mensaje, 90) }}</small>
+                                @else
+                                    <small class="text-muted">Listo para envio</small>
+                                @endif
+                            </td>
                             <td class="maint-actions-cell">
+                                <form method="POST" action="{{ \App\Support\AppUrl::route('emails.send', ['dispatch' => $email->id]) }}">@csrf<button class="btn btn-xs btn-info"><i class="fas fa-paper-plane"></i></button></form>
                                 <a href="{{ \App\Support\AppUrl::route('emails.index') }}?edit_email={{ $email->id }}" class="btn btn-xs btn-warning"><i class="fas fa-pen"></i></a>
                                 <form method="POST" action="{{ \App\Support\AppUrl::route('emails.destroy', ['dispatch' => $email->id]) }}" data-swal-confirm="true" data-swal-title="Desactivar registro de correo" data-swal-text="El historial quedara oculto del mantenimiento, pero no se eliminara fisicamente." data-swal-confirm-label="Si, desactivar">@csrf @method('DELETE')<button class="btn btn-xs btn-danger"><i class="fas fa-user-slash"></i></button></form>
                             </td>
                         </tr>
                     @empty
-                        <tr><td colspan="7" class="text-center text-muted">No hay correos registrados.</td></tr>
+                        <tr><td colspan="9" class="text-center text-muted">No hay correos registrados.</td></tr>
                     @endforelse
                     @if ($emails->count() > 0)
                         <tr data-empty-filter style="display:none;">
-                            <td colspan="7" class="text-center text-muted">No se encontraron correos con esos filtros.</td>
+                            <td colspan="9" class="text-center text-muted">No se encontraron correos con esos filtros.</td>
                         </tr>
                     @endif
                     </tbody>
@@ -143,10 +191,12 @@
                         <div class="col-md-6 form-group">
                             <label>Plantilla</label>
                             <select name="plantilla_id" class="form-control" required>
+                                <option value="">Seleccione una plantilla</option>
                                 @foreach ($templates as $template)
                                     <option value="{{ $template->id }}" @selected(old('plantilla_id', $editEmail->plantilla_id ?? '') == $template->id)>{{ $template->nombre }}</option>
                                 @endforeach
                             </select>
+                            <small class="text-muted">Solo aparecen las plantillas permitidas para tu perfil.</small>
                         </div>
                         <div class="col-md-6 form-group">
                             <label>Familiar</label>
@@ -216,13 +266,35 @@
                         <input type="text" name="nombre" class="form-control" value="{{ old('nombre', $editTemplate->nombre ?? '') }}" placeholder="reporte_trimestral" required>
                     </div>
                     <div class="form-group">
+                        <label>Descripcion</label>
+                        <input type="text" name="descripcion" class="form-control" value="{{ old('descripcion', $editTemplate->descripcion ?? '') }}" placeholder="Plantilla para envio de boletines y avisos">
+                    </div>
+                    <div class="form-group">
                         <label>Asunto</label>
                         <input type="text" name="asunto" class="form-control" value="{{ old('asunto', $editTemplate->asunto ?? '') }}" placeholder="Reporte de notas" required>
+                    </div>
+                    <div class="form-group">
+                        <label>Perfiles autorizados</label>
+                        <select name="roles[]" class="form-control" multiple size="5">
+                            @foreach ($rolesCatalog as $role)
+                                <option value="{{ $role->id }}" @selected(in_array((int) $role->id, $selectedTemplateRoles, true))>{{ $role->nombre }}</option>
+                            @endforeach
+                        </select>
+                        <small class="text-muted">Si no seleccionas perfiles, la plantilla quedara disponible para todos los usuarios con acceso al modulo.</small>
+                    </div>
+                    <div class="form-group">
+                        <label>Documentos generados a adjuntar</label>
+                        <select name="documentos_generados[]" class="form-control" multiple size="4">
+                            @foreach ($generatedDocumentCatalog as $document)
+                                <option value="{{ $document['code'] }}" @selected(in_array($document['code'], $selectedTemplateDocuments, true))>{{ $document['label'] }}</option>
+                            @endforeach
+                        </select>
+                        <small class="text-muted">Estos adjuntos no se suben manualmente: el sistema los renderiza al momento de enviar.</small>
                     </div>
                     <div class="form-group mb-2">
                         <label>Cuerpo HTML</label>
                         <textarea name="cuerpo_html" rows="8" class="form-control" placeholder="<h1>Hola</h1><p>Contenido...</p>" required>{{ old('cuerpo_html', $editTemplate->cuerpo_html ?? '') }}</textarea>
-                        <small class="text-muted">Puedes usar HTML basico para asunto y contenido del mensaje.</small>
+                        <small class="text-muted">Puedes usar HTML basico. Variables disponibles: {{'{{familiar_nombre}}'}}, {{'{{alumno_nombre}}'}}, {{'{{trimestre}}'}}, {{'{{perfil}}'}}, {{'{{app_nombre}}'}}, {{'{{app_url}}'}}.</small>
                     </div>
                     <button class="btn btn-success btn-sm">{{ $editTemplate ? 'Guardar plantilla' : 'Agregar plantilla' }}</button>
                     @if ($editTemplate)<a href="{{ \App\Support\AppUrl::route('emails.index') }}" class="btn btn-default btn-sm">Cancelar</a>@endif

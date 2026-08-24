@@ -3,7 +3,12 @@
 namespace App\Http\Controllers;
 
 use App\Models\EmailDispatch;
+use App\Models\EmailTemplate;
+use App\Models\User;
+use App\Services\EmailDeliveryService;
 use App\Support\AppUrl;
+use Illuminate\Support\Facades\Auth;
+use Illuminate\Support\Carbon;
 use Illuminate\Http\RedirectResponse;
 use Illuminate\Http\Request;
 use Illuminate\Support\Facades\DB;
@@ -14,9 +19,15 @@ class EmailDispatchController extends Controller
     public function store(Request $request): RedirectResponse
     {
         $data = $this->validateDispatch($request);
+        $template = EmailTemplate::with('roles')->findOrFail((int) $data['plantilla_id']);
+        $this->guardTemplateAccess($template);
+        $recipientEmail = (string) DB::table('padres')->where('id', $data['padre_id'])->value('email_principal');
 
         EmailDispatch::create([
             ...$data,
+            'usuario_id' => Auth::id(),
+            'destinatario_email' => $recipientEmail,
+            'adjuntos_generados' => $template->documentos_generados ?? [],
             'activo' => true,
         ]);
 
@@ -26,8 +37,16 @@ class EmailDispatchController extends Controller
     public function update(Request $request, EmailDispatch $dispatch): RedirectResponse
     {
         $data = $this->validateDispatch($request);
+        $template = EmailTemplate::with('roles')->findOrFail((int) $data['plantilla_id']);
+        $this->guardTemplateAccess($template);
+        $recipientEmail = (string) DB::table('padres')->where('id', $data['padre_id'])->value('email_principal');
 
-        $dispatch->update($data);
+        $dispatch->update([
+            ...$data,
+            'usuario_id' => Auth::id(),
+            'destinatario_email' => $recipientEmail,
+            'adjuntos_generados' => $template->documentos_generados ?? [],
+        ]);
 
         return redirect(AppUrl::route('emails.index'))->with('status', 'Registro de correo actualizado correctamente.');
     }
@@ -37,6 +56,40 @@ class EmailDispatchController extends Controller
         $dispatch->update(['activo' => false]);
 
         return redirect(AppUrl::route('emails.index'))->with('status', 'Registro de correo desactivado correctamente.');
+    }
+
+    public function send(EmailDispatch $dispatch, EmailDeliveryService $deliveryService): RedirectResponse
+    {
+        $dispatch->load('template.roles');
+
+        if (! $dispatch->activo) {
+            return redirect(AppUrl::route('emails.index'))->with('error', 'El registro de correo esta inactivo.');
+        }
+
+        $this->guardTemplateAccess($dispatch->template);
+
+        try {
+            $result = $deliveryService->sendDispatch($dispatch, Auth::user());
+
+            $dispatch->update([
+                'estado' => 'enviado',
+                'usuario_id' => Auth::id(),
+                'destinatario_email' => $result['recipient'],
+                'adjuntos_generados' => $result['attachments'],
+                'error_mensaje' => null,
+                'enviado_en' => Carbon::now(),
+            ]);
+
+            return redirect(AppUrl::route('emails.index'))->with('status', 'Correo enviado correctamente.');
+        } catch (\Throwable $exception) {
+            $dispatch->update([
+                'estado' => 'fallido',
+                'usuario_id' => Auth::id(),
+                'error_mensaje' => $exception->getMessage(),
+            ]);
+
+            return redirect(AppUrl::route('emails.index'))->with('error', 'No se pudo enviar el correo: '.$exception->getMessage());
+        }
     }
 
     private function validateDispatch(Request $request): array
@@ -62,5 +115,28 @@ class EmailDispatchController extends Controller
             'trimestre_id' => ['required', 'integer', 'exists:trimestres,id'],
             'estado' => ['required', Rule::in(['pendiente', 'enviado', 'fallido'])],
         ]);
+    }
+
+    private function guardTemplateAccess(EmailTemplate $template): void
+    {
+        $user = Auth::user();
+
+        if (! $user instanceof User) {
+            abort(403);
+        }
+
+        $user->loadMissing('role');
+
+        if (($user->role->nombre ?? null) === 'admin') {
+            return;
+        }
+
+        $allowedRoleIds = $template->roles()->pluck('roles.id');
+
+        if ($allowedRoleIds->isEmpty()) {
+            return;
+        }
+
+        abort_unless($allowedRoleIds->contains((int) $user->rol_id), 403);
     }
 }

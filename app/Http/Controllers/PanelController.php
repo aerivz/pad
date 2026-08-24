@@ -18,7 +18,9 @@ use App\Models\StudentPeriodExam;
 use App\Models\SystemBackup;
 use App\Models\Teacher;
 use App\Models\User;
+use App\Services\SystemSettingsService;
 use App\Support\CollectorTemplateCatalog;
+use App\Support\GeneratedDocumentCatalog;
 use Illuminate\Support\Collection;
 use Illuminate\Support\Facades\Auth;
 use Illuminate\Support\Facades\DB;
@@ -241,18 +243,23 @@ class PanelController extends Controller
 
     public function emails(): View
     {
+        $availableTemplates = $this->availableEmailTemplates();
+
         return view('panel.emails', [
             ...$this->baseData(),
             'activeMenu' => 'emails',
             'emails' => $this->emailsData(),
-            'templates' => EmailTemplate::active()->orderBy('nombre')->get(),
-            'templateCatalog' => EmailTemplate::active()->orderBy('nombre')->get(),
+            'templates' => $availableTemplates,
+            'templateCatalog' => EmailTemplate::active()->with('roles')->orderBy('nombre')->get(),
             'familyMembers' => Guardian::active()->orderBy('nombres')->orderBy('apellidos')->get(),
             'studentsForEmail' => $this->studentsForFamily(),
             'studentSections' => Section::active()->orderBy('grado')->orderBy('nombre')->get(['id', 'grado', 'nombre']),
             'trimesters' => DB::table('trimestres')->orderBy('numero')->get(),
             'editEmail' => request()->filled('edit_email') ? EmailDispatch::active()->find(request()->integer('edit_email')) : null,
-            'editTemplate' => request()->filled('edit_template') ? EmailTemplate::active()->find(request()->integer('edit_template')) : null,
+            'editTemplate' => request()->filled('edit_template') ? EmailTemplate::active()->with('roles')->find(request()->integer('edit_template')) : null,
+            'rolesCatalog' => Role::active()->orderBy('nombre')->get(),
+            'generatedDocumentCatalog' => app(GeneratedDocumentCatalog::class)->all(),
+            'generatedDocumentLabels' => app(GeneratedDocumentCatalog::class)->labels(),
         ]);
     }
 
@@ -292,6 +299,8 @@ class PanelController extends Controller
         return view('panel.config', [
             ...$this->baseData(),
             'activeMenu' => 'config',
+            'systemSettings' => app(SystemSettingsService::class)->publicValues(),
+            'canManageSystemSettings' => (auth()->user()?->role()->value('nombre') ?? null) === 'admin',
         ]);
     }
 
@@ -603,8 +612,42 @@ class PanelController extends Controller
             ->leftJoin('padre_alumno as pa', function ($join) {
                 $join->on('pa.padre_id', '=', 'p.id')->on('pa.alumno_id', '=', 'a.id');
             })
-            ->select('ec.id', 'ec.plantilla_id', 'ec.padre_id', 'ec.alumno_id', 'ec.trimestre_id', 'ec.estado', 'pc.nombre as plantilla', 'p.nombres', 'p.apellidos', 'p.email_principal', 'a.nombres as alumno_nombres', 'a.apellidos as alumno_apellidos', 't.nombre as trimestre', 'pa.parentesco')
+            ->leftJoin('usuarios as u', 'u.id', '=', 'ec.usuario_id')
+            ->select('ec.id', 'ec.plantilla_id', 'ec.padre_id', 'ec.alumno_id', 'ec.trimestre_id', 'ec.estado', 'ec.destinatario_email', 'ec.adjuntos_generados', 'ec.error_mensaje', 'ec.enviado_en', 'pc.nombre as plantilla', 'p.nombres', 'p.apellidos', 'p.email_principal', 'a.nombres as alumno_nombres', 'a.apellidos as alumno_apellidos', 't.nombre as trimestre', 'pa.parentesco', 'u.nombre_usuario')
             ->orderByDesc('ec.id')
+            ->get()
+            ->map(function ($row) {
+                $row->adjuntos_generados = is_string($row->adjuntos_generados)
+                    ? json_decode($row->adjuntos_generados, true) ?? []
+                    : ($row->adjuntos_generados ?? []);
+
+                return $row;
+            });
+    }
+
+    private function availableEmailTemplates()
+    {
+        $user = auth()->user();
+
+        $query = EmailTemplate::active()
+            ->with('roles')
+            ->orderBy('nombre');
+
+        if (! $user instanceof User) {
+            return $query->get();
+        }
+
+        $user->loadMissing('role');
+
+        if (($user->role->nombre ?? null) === 'admin') {
+            return $query->get();
+        }
+
+        return $query
+            ->where(function ($builder) use ($user) {
+                $builder->whereDoesntHave('roles')
+                    ->orWhereHas('roles', fn ($roleQuery) => $roleQuery->where('roles.id', $user->rol_id));
+            })
             ->get();
     }
 
