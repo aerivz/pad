@@ -230,7 +230,7 @@
                             @endif
                         @endif
                         <li class="{{ implode(' ', $itemClasses) }}">
-                            <a href="{{ count($children) > 0 ? ($item['url'] === '#' ? '#' : $item['url']) : $item['url'] }}" class="nav-link {{ $activeMenu === $key || $isChildActive ? 'active' : '' }} {{ count($children) > 0 ? 'submenu-toggle' : '' }}" @if(count($children) > 0) data-submenu-toggle="true" @endif>
+                            <a href="{{ count($children) > 0 ? '#' : $item['url'] }}" class="nav-link {{ $activeMenu === $key || $isChildActive ? 'active' : '' }} {{ count($children) > 0 ? 'submenu-toggle' : '' }}" @if(count($children) > 0) data-submenu-toggle="true" role="button" aria-expanded="{{ $activeMenu === $key || $isChildActive ? 'true' : 'false' }}" @endif>
                                 <i class="nav-icon {{ $item['icon'] }}"></i>
                                 <p>
                                     {{ $item['label'] }}
@@ -408,24 +408,30 @@
             applyFilters();
         });
 
-        document.querySelectorAll('.submenu-toggle[data-submenu-toggle="true"]').forEach(function (toggle) {
-            toggle.addEventListener('click', function (event) {
-                if (window.innerWidth >= 992) {
-                    return;
-                }
+        // On mobile, keep the submenu tap independent from AdminLTE's desktop treeview handler.
+        document.addEventListener('click', function (event) {
+            const toggle = event.target.closest('.submenu-toggle[data-submenu-toggle="true"]');
 
-                event.preventDefault();
+            if (!toggle || window.innerWidth >= 992) {
+                return;
+            }
 
-                const item = toggle.closest('.nav-item');
+            event.preventDefault();
+            event.stopPropagation();
 
-                if (!item) {
-                    return;
-                }
+            const item = toggle.closest('.nav-item');
+            const tree = item ? item.querySelector(':scope > .nav-treeview') : null;
 
-                item.classList.toggle('menu-open');
-                toggle.classList.toggle('active');
-            });
-        });
+            if (!item || !tree) {
+                return;
+            }
+
+            const isOpen = !item.classList.contains('menu-open');
+            item.classList.toggle('menu-open', isOpen);
+            toggle.classList.toggle('active', isOpen);
+            toggle.setAttribute('aria-expanded', isOpen ? 'true' : 'false');
+            tree.style.display = isOpen ? 'block' : 'none';
+        }, true);
     });
 </script>
 </body>
