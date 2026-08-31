@@ -50,7 +50,7 @@
         .maint-search-grid { display: grid; grid-template-columns: minmax(220px, 2fr) minmax(180px, 1fr) auto; gap: 1rem; align-items: end; }
         .maint-tags { display: flex; flex-wrap: wrap; gap: .65rem; }
         .maint-tag { background: #f1f5f9; border-radius: 999px; padding: .45rem .85rem; color: #475569; font-size: .84rem; font-weight: 600; }
-        .maint-card .table-responsive { border: 1px solid #dbe3ee; border-radius: 14px; overflow: hidden; background: #fff; }
+        .maint-card .table-responsive { border: 1px solid #dbe3ee; border-radius: 14px; overflow-x: auto; overflow-y: hidden; background: #fff; -webkit-overflow-scrolling: touch; }
         .maint-table { margin-bottom: 0; border-collapse: separate; border-spacing: 0; }
         .maint-table thead th { background: #f8fafc; font-size: .84rem; text-transform: none; letter-spacing: .01em; color: #52627a; border-top: 0; border-bottom: 1px solid #dbe3ee; padding: .95rem .9rem; font-weight: 700; }
         .maint-table thead th:first-child { border-top-left-radius: 14px; }
@@ -154,6 +154,24 @@
         }
         @media (max-width: 991.98px) {
             .maint-search-grid { grid-template-columns: 1fr; }
+        }
+        @media (max-width: 767.98px) {
+            .content-header { padding: .8rem 0 .35rem; }
+            .content-header h1 { font-size: 1.55rem; }
+            .content-header .breadcrumb { display: none; }
+            .content .container-fluid { padding-right: .65rem; padding-left: .65rem; }
+            .card-header { padding: .8rem .9rem; }
+            .card-body { padding: .9rem; }
+            .maint-toolbar { align-items: stretch; }
+            .maint-actions { width: 100%; }
+            .maint-actions .btn { flex: 1 1 145px; }
+            .filter-toolbar { display: grid; grid-template-columns: 1fr; gap: .65rem; }
+            .filter-toolbar .form-group { min-width: 0; width: 100%; }
+            .card-header .card-tools { float: none; margin-top: .7rem; }
+            .modal-dialog { margin: .5rem; }
+            .modal-dialog.modal-dialog-centered { min-height: calc(100% - 1rem); }
+            .table-responsive { -webkit-overflow-scrolling: touch; }
+            .maint-table thead th, .maint-table tbody td { padding: .7rem .65rem; }
         }
     </style>
 </head>

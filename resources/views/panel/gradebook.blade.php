@@ -7,23 +7,31 @@
     .collector-toolbar-card .card-body { display: flex; justify-content: space-between; align-items: center; gap: 1rem; flex-wrap: wrap; }
     .collector-toolbar-meta { color: #6c757d; font-size: .9rem; }
     .collector-table-card .card-body { padding: 0; }
-    .collector-grid { display: flex; align-items: stretch; width: 100%; }
-    .collector-grid-fixed { flex: 0 0 380px; max-width: 380px; border-right: 1px solid #dee2e6; background: #fff; }
-    .collector-grid-scroll { flex: 1 1 auto; min-width: 0; overflow-x: auto; background: #fff; }
-    .collector-grid-fixed .table-responsive,
-    .collector-grid-scroll .table-responsive { overflow: visible; }
+    .collector-grid { width: 100%; overflow-x: auto; background: #fff; -webkit-overflow-scrolling: touch; }
+    .collector-grid .table { min-width: max-content; }
     .collector-table-card .table { margin-bottom: 0; border-collapse: separate; border-spacing: 0; }
     .collector-table-card th,
     .collector-table-card td { white-space: nowrap; vertical-align: middle; }
     .collector-table-card .grade-input { width: 82px; }
     .collector-modal-table td,
     .collector-modal-table th { vertical-align: middle; }
-    .collector-fixed-number { width: 72px; min-width: 72px; max-width: 72px; }
-    .collector-fixed-student { width: 308px; min-width: 308px; max-width: 308px; overflow: hidden; text-overflow: ellipsis; }
-    .collector-grid-fixed thead th,
-    .collector-grid-scroll thead th { background: #f8f9fa; }
-    .collector-grid-fixed tbody td,
-    .collector-grid-scroll tbody td { height: 70px; }
+    .collector-sticky-number { position: sticky; left: 0; z-index: 4; width: 58px; min-width: 58px; max-width: 58px; }
+    .collector-sticky-student { position: sticky; left: 58px; z-index: 3; width: 240px; min-width: 240px; max-width: 240px; overflow: hidden; text-overflow: ellipsis; box-shadow: 4px 0 8px rgba(15, 23, 42, .08); }
+    .collector-table-card thead .collector-sticky-number,
+    .collector-table-card thead .collector-sticky-student { z-index: 6; background: #f8f9fa; }
+    .collector-table-card tbody .collector-sticky-number,
+    .collector-table-card tbody .collector-sticky-student { background: #fff; }
+    .collector-table-card tbody td { height: 70px; }
+    @media (max-width: 767.98px) {
+        .collector-toolbar-card .card-body { align-items: stretch; }
+        .collector-toolbar-meta { width: 100%; }
+        .collector-toolbar-card .action-toolbar { display: grid; grid-template-columns: 1fr 1fr; gap: .5rem; width: 100%; }
+        .collector-toolbar-card .action-toolbar .btn { margin: 0; white-space: normal; }
+        .collector-sticky-number { width: 42px; min-width: 42px; max-width: 42px; }
+        .collector-sticky-student { left: 42px; width: 150px; min-width: 150px; max-width: 150px; }
+        .collector-table-card th, .collector-table-card td { font-size: .78rem; }
+        .collector-table-card .grade-input { width: 66px; }
+    }
     .collector-readonly .grade-input[disabled] { background: #f8fafc; color: #475569; opacity: 1; }
 </style>
 @endpush
@@ -178,33 +186,11 @@
                     <input type="hidden" name="periodo" value="{{ $selectedPeriod }}">
 
                     <div class="collector-grid">
-                        <div class="collector-grid-fixed">
-                            <div class="table-responsive">
-                                <table class="table table-bordered table-sm" id="collector-fixed-table">
+                        <table class="table table-bordered table-sm" id="collector-table">
                                     <thead class="bg-light">
                                         <tr>
-                                            <th rowspan="2" class="collector-fixed-number">#</th>
-                                            <th rowspan="2" class="collector-fixed-student">Alumno</th>
-                                        </tr>
-                                        <tr></tr>
-                                    </thead>
-                                    <tbody>
-                                    @foreach ($gradeBoard['rows'] as $row)
-                                        <tr>
-                                            <td class="collector-fixed-number">{{ $row['id'] }}</td>
-                                            <td class="collector-fixed-student">{{ $row['nombre'] }}</td>
-                                        </tr>
-                                    @endforeach
-                                    </tbody>
-                                </table>
-                            </div>
-                        </div>
-
-                        <div class="collector-grid-scroll">
-                            <div class="table-responsive">
-                                <table class="table table-bordered table-sm" id="collector-scroll-table">
-                                    <thead class="bg-light">
-                                        <tr>
+                                            <th rowspan="2" class="collector-sticky-number">#</th>
+                                            <th rowspan="2" class="collector-sticky-student">Alumno</th>
                                             @foreach ($gradeBoard['categories'] as $category)
                                                 <th colspan="{{ $category->tipo_calculo === 'laboratorio' ? 4 : 6 }}" class="text-center">
                                                     {{ $category->nombre }}<br>
@@ -236,6 +222,8 @@
                                     <tbody>
                                     @foreach ($gradeBoard['rows'] as $row)
                                         <tr>
+                                            <td class="collector-sticky-number">{{ $row['id'] }}</td>
+                                            <td class="collector-sticky-student">{{ $row['nombre'] }}</td>
                                             @foreach ($gradeBoard['categories'] as $category)
                                                 @php($categoryScore = $row['categories'][$category->id] ?? [])
                                                 <td class="text-center">
@@ -270,9 +258,7 @@
                                         </tr>
                                     @endforeach
                                     </tbody>
-                                </table>
-                            </div>
-                        </div>
+                        </table>
                     </div>
 
                     @if ($canEditGradeBook)
@@ -570,39 +556,6 @@
             templateSelect.addEventListener('change', syncTemplatePreview);
             syncTemplatePreview();
         }
-
-        const syncCollectorHeights = function () {
-            const fixedTable = document.getElementById('collector-fixed-table');
-            const scrollTable = document.getElementById('collector-scroll-table');
-
-            if (!fixedTable || !scrollTable) {
-                return;
-            }
-
-            const fixedRows = Array.from(fixedTable.querySelectorAll('tr'));
-            const scrollRows = Array.from(scrollTable.querySelectorAll('tr'));
-            const totalRows = Math.min(fixedRows.length, scrollRows.length);
-
-            fixedRows.forEach(function (row) {
-                row.style.height = '';
-            });
-
-            scrollRows.forEach(function (row) {
-                row.style.height = '';
-            });
-
-            for (let index = 0; index < totalRows; index += 1) {
-                const fixedHeight = fixedRows[index].getBoundingClientRect().height;
-                const scrollHeight = scrollRows[index].getBoundingClientRect().height;
-                const targetHeight = Math.max(fixedHeight, scrollHeight);
-
-                fixedRows[index].style.height = targetHeight + 'px';
-                scrollRows[index].style.height = targetHeight + 'px';
-            }
-        };
-
-        syncCollectorHeights();
-        window.addEventListener('resize', syncCollectorHeights);
 
         @if ($canEditGradeBook && $editCategory)
             $('#categoryModal').modal('show');
