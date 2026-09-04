@@ -9,6 +9,7 @@
     <link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/5.15.4/css/all.min.css">
     <link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/admin-lte/3.2.0/css/adminlte.min.css">
     <link rel="stylesheet" href="https://cdn.jsdelivr.net/npm/sweetalert2@11/dist/sweetalert2.min.css">
+    @include('components.pwa-meta')
     <style>
         body {
             min-height: 100vh;
@@ -50,6 +51,7 @@
             background: rgba(255,255,255,.1);
             padding: .35rem;
         }
+        .pwa-install-button { position: fixed; right: 1rem; bottom: 1rem; z-index: 10; background: #820005; border-color: #820005; color: #fff; border-radius: 999px; box-shadow: 0 8px 22px rgba(130, 0, 5, .3); }
     </style>
 </head>
 <body>
@@ -108,5 +110,6 @@
             }
         });
     </script>
+    <x-pwa-install />
 </body>
 </html>

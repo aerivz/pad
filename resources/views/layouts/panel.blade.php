@@ -9,6 +9,7 @@
     <link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/5.15.4/css/all.min.css">
     <link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/admin-lte/3.2.0/css/adminlte.min.css">
     <link rel="stylesheet" href="https://cdn.jsdelivr.net/npm/sweetalert2@11/dist/sweetalert2.min.css">
+    @include('components.pwa-meta')
     @stack('styles')
     <style>
         body { font-family: 'Source Sans Pro', sans-serif; }
@@ -66,6 +67,8 @@
         .maint-actions-cell { white-space: nowrap; }
         .maint-actions-cell form { display: inline-block; }
         .maint-actions-cell .btn { border-radius: .5rem; }
+        .pwa-install-button { position: fixed; right: 1rem; bottom: 1rem; z-index: 1080; background: #820005; border-color: #820005; color: #fff; border-radius: 999px; box-shadow: 0 8px 22px rgba(130, 0, 5, .3); }
+        .pwa-install-button:hover { background: #650004; color: #fff; }
         .maint-form-card { border: 1px dashed #bfd2f0; background: linear-gradient(180deg, #f8fbff, #ffffff); }
         .maint-form-card .card-header { background: transparent; }
         .maint-modal-list { margin: 0; padding-left: 1rem; }
@@ -434,5 +437,6 @@
         }, true);
     });
 </script>
+<x-pwa-install />
 </body>
 </html>
