@@ -4,7 +4,9 @@ use App\Http\Controllers\AuthController;
 use App\Http\Controllers\AssignmentController;
 use App\Http\Controllers\CollectorTemplateController;
 use App\Http\Controllers\EmailDispatchController;
+use App\Http\Controllers\EmailBatchController;
 use App\Http\Controllers\EmailTemplateController;
+use App\Http\Controllers\EmailPreviewController;
 use App\Http\Controllers\EvaluationController;
 use App\Http\Controllers\GuardianController;
 use App\Http\Controllers\MediaController;
@@ -114,6 +116,11 @@ Route::middleware('auth')->group(function () {
 
     Route::get('/correos', [PanelController::class, 'emails'])->middleware('menu.access:emails')->name('emails.index');
     Route::post('/correos', [EmailDispatchController::class, 'store'])->middleware('menu.access:emails')->name('emails.store');
+    Route::post('/correos/lotes', [EmailBatchController::class, 'store'])->middleware('menu.access:emails')->name('emails.batches.store');
+    Route::post('/correos/lotes/{batch}/reintentar-fallidos', [EmailBatchController::class, 'retryFailed'])->middleware('menu.access:emails')->name('emails.batches.retry');
+    Route::get('/correos/lotes/{batch}/exportar', [EmailBatchController::class, 'export'])->middleware('menu.access:emails')->name('emails.batches.export');
+    Route::get('/correos/vista-previa', [EmailPreviewController::class, 'show'])->middleware('menu.access:emails')->name('emails.preview');
+    Route::get('/correos/vista-previa/documento', [EmailPreviewController::class, 'document'])->middleware('menu.access:emails')->name('emails.preview.document');
     Route::post('/correos/{dispatch}/enviar', [EmailDispatchController::class, 'send'])->middleware('menu.access:emails')->name('emails.send');
     Route::patch('/correos/{dispatch}', [EmailDispatchController::class, 'update'])->middleware('menu.access:emails')->name('emails.update');
     Route::delete('/correos/{dispatch}', [EmailDispatchController::class, 'destroy'])->middleware('menu.access:emails')->name('emails.destroy');
@@ -198,6 +205,11 @@ Route::prefix('pad')->middleware('auth')->group(function () {
 
     Route::get('/correos', [PanelController::class, 'emails'])->middleware('menu.access:emails');
     Route::post('/correos', [EmailDispatchController::class, 'store'])->middleware('menu.access:emails');
+    Route::post('/correos/lotes', [EmailBatchController::class, 'store'])->middleware('menu.access:emails');
+    Route::post('/correos/lotes/{batch}/reintentar-fallidos', [EmailBatchController::class, 'retryFailed'])->middleware('menu.access:emails');
+    Route::get('/correos/lotes/{batch}/exportar', [EmailBatchController::class, 'export'])->middleware('menu.access:emails');
+    Route::get('/correos/vista-previa', [EmailPreviewController::class, 'show'])->middleware('menu.access:emails');
+    Route::get('/correos/vista-previa/documento', [EmailPreviewController::class, 'document'])->middleware('menu.access:emails');
     Route::post('/correos/{dispatch}/enviar', [EmailDispatchController::class, 'send'])->middleware('menu.access:emails');
     Route::patch('/correos/{dispatch}', [EmailDispatchController::class, 'update'])->middleware('menu.access:emails');
     Route::delete('/correos/{dispatch}', [EmailDispatchController::class, 'destroy'])->middleware('menu.access:emails');

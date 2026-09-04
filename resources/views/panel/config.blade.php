@@ -28,6 +28,7 @@
                         <div class="col-md-6 form-group"><label>Correo remitente</label><input type="email" name="mail_from_address" class="form-control" value="{{ old('mail_from_address', $systemSettings['mail_from_address']) }}"></div>
                         <div class="col-md-6 form-group"><label>Nombre remitente</label><input name="mail_from_name" class="form-control" value="{{ old('mail_from_name', $systemSettings['mail_from_name']) }}"></div>
                     </div>
+                    <div class="row"><div class="col-md-4 form-group mb-0"><label>Maximo de correos por minuto</label><input type="number" name="mail_rate_limit_per_minute" min="1" max="300" required class="form-control" value="{{ old('mail_rate_limit_per_minute', $systemSettings['mail_rate_limit_per_minute']) }}"><small class="text-muted">Reduce el valor si tu proveedor SMTP limita envios.</small></div></div>
                 </div>
                 <div class="card-header border-top"><h3 class="card-title"><i class="fab fa-telegram-plane mr-2"></i>Alertas de errores por Telegram</h3></div>
                 <div class="card-body">

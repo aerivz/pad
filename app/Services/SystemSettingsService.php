@@ -25,6 +25,7 @@ class SystemSettingsService
             'mail.mailers.smtp.scheme' => ($settings['mail.scheme'] ?? null) ?: config('mail.mailers.smtp.scheme'),
             'mail.from.address' => $settings['mail.from_address'] ?? config('mail.from.address'),
             'mail.from.name' => $settings['mail.from_name'] ?? config('mail.from.name'),
+            'mail.rate_limit_per_minute' => isset($settings['mail.rate_limit_per_minute']) ? (int) $settings['mail.rate_limit_per_minute'] : config('mail.rate_limit_per_minute', 30),
             'services.telegram_errors.enabled' => isset($settings['telegram.enabled']) ? filter_var($settings['telegram.enabled'], FILTER_VALIDATE_BOOL) : config('services.telegram_errors.enabled'),
             'services.telegram_errors.bot_token' => $settings['telegram.bot_token'] ?? config('services.telegram_errors.bot_token'),
             'services.telegram_errors.chat_id' => $settings['telegram.chat_id'] ?? config('services.telegram_errors.chat_id'),
@@ -49,7 +50,7 @@ class SystemSettingsService
             'mail_mailer' => $this->value('mail.mailer', config('mail.default')), 'mail_host' => $this->value('mail.host', config('mail.mailers.smtp.host')),
             'mail_port' => $this->value('mail.port', config('mail.mailers.smtp.port')), 'mail_username' => $this->value('mail.username', config('mail.mailers.smtp.username')),
             'mail_scheme' => $this->value('mail.scheme', config('mail.mailers.smtp.scheme')), 'mail_from_address' => $this->value('mail.from_address', config('mail.from.address')),
-            'mail_from_name' => $this->value('mail.from_name', config('mail.from.name')), 'telegram_enabled' => filter_var($this->value('telegram.enabled', config('services.telegram_errors.enabled')), FILTER_VALIDATE_BOOL),
+            'mail_from_name' => $this->value('mail.from_name', config('mail.from.name')), 'mail_rate_limit_per_minute' => $this->value('mail.rate_limit_per_minute', config('mail.rate_limit_per_minute', 30)), 'telegram_enabled' => filter_var($this->value('telegram.enabled', config('services.telegram_errors.enabled')), FILTER_VALIDATE_BOOL),
             'telegram_chat_id' => $this->value('telegram.chat_id', config('services.telegram_errors.chat_id')), 'telegram_timeout' => $this->value('telegram.timeout', config('services.telegram_errors.timeout', 5)),
             'mail_password_configured' => $this->has('mail.password') || filled(config('mail.mailers.smtp.password')), 'telegram_token_configured' => $this->has('telegram.bot_token') || filled(config('services.telegram_errors.bot_token')),
         ];

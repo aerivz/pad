@@ -559,6 +559,7 @@ php artisan optimize:clear
 php artisan view:clear
 php artisan test
 php artisan queue:work --queue=backups,default
+php artisan queue:work database --queue=emails --tries=3 --timeout=180
 ```
 
 ## Resumen corto

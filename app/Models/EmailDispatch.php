@@ -14,11 +14,13 @@ class EmailDispatch extends Model
 
     protected $fillable = [
         'usuario_id',
+        'lote_id',
         'plantilla_id',
         'padre_id',
         'alumno_id',
         'trimestre_id',
         'estado',
+        'en_cola',
         'destinatario_email',
         'adjuntos_generados',
         'error_mensaje',
@@ -30,6 +32,7 @@ class EmailDispatch extends Model
     {
         return [
             'activo' => 'boolean',
+            'en_cola' => 'boolean',
             'adjuntos_generados' => 'array',
             'enviado_en' => 'datetime',
         ];
@@ -48,5 +51,10 @@ class EmailDispatch extends Model
     public function user(): BelongsTo
     {
         return $this->belongsTo(User::class, 'usuario_id');
+    }
+
+    public function batch(): BelongsTo
+    {
+        return $this->belongsTo(EmailBatch::class, 'lote_id');
     }
 }

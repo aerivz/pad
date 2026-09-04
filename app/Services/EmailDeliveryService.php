@@ -3,6 +3,7 @@
 namespace App\Services;
 
 use App\Models\EmailDispatch;
+use App\Models\EmailTemplate;
 use App\Models\Guardian;
 use App\Models\Student;
 use App\Models\User;
@@ -25,28 +26,11 @@ class EmailDeliveryService
         $guardian = Guardian::active()->findOrFail($dispatch->padre_id);
         $student = Student::active()->findOrFail($dispatch->alumno_id);
         $trimester = DB::table('trimestres')->where('id', $dispatch->trimestre_id)->first();
-        $roleName = $actor?->role()->value('nombre');
-        $attachmentCodes = $template->generated_documents ?? [];
-
-        $html = $this->renderBody($template->cuerpo_html, [
-            '{{familiar_nombre}}' => trim($guardian->nombres.' '.$guardian->apellidos),
-            '{{alumno_nombre}}' => trim($student->nombres.' '.$student->apellidos),
-            '{{trimestre}}' => $trimester->nombre ?? 'Sin trimestre',
-            '{{perfil}}' => $roleName ?? 'Sin perfil',
-            '{{app_nombre}}' => (string) config('app.name', 'Sistema Escolar'),
-            '{{app_url}}' => (string) config('app.url'),
-        ]);
-
-        $attachments = $this->buildAttachments($attachmentCodes, $student->id, $student->seccion_id);
-        $recipient = $guardian->email_principal;
-        $subject = $this->renderBody($template->asunto, [
-            '{{familiar_nombre}}' => trim($guardian->nombres.' '.$guardian->apellidos),
-            '{{alumno_nombre}}' => trim($student->nombres.' '.$student->apellidos),
-            '{{trimestre}}' => $trimester->nombre ?? 'Sin trimestre',
-            '{{perfil}}' => $roleName ?? 'Sin perfil',
-            '{{app_nombre}}' => (string) config('app.name', 'Sistema Escolar'),
-            '{{app_url}}' => (string) config('app.url'),
-        ]);
+        $preview = $this->preview($template, $guardian, $student, $trimester, $actor);
+        $attachments = $this->buildAttachments($template->generated_documents ?? [], $student->id, $student->seccion_id);
+        $recipient = $preview['recipient'];
+        $subject = $preview['subject'];
+        $html = $preview['html'];
 
         Mail::send([], [], function ($message) use ($recipient, $subject, $html, $attachments): void {
             $message->to($recipient)
@@ -65,6 +49,33 @@ class EmailDeliveryService
         return [
             'recipient' => $recipient,
             'attachments' => collect($attachments)->pluck('code')->values()->all(),
+        ];
+    }
+
+    /**
+     * @return array{recipient:string,subject:string,html:string,attachments:array<int, array{code:string,label:string}>}
+     */
+    public function preview(EmailTemplate $template, Guardian $guardian, Student $student, ?object $trimester, ?User $actor = null): array
+    {
+        $roleName = $actor?->role()->value('nombre');
+        $replacements = [
+            '{{familiar_nombre}}' => trim($guardian->nombres.' '.$guardian->apellidos),
+            '{{alumno_nombre}}' => trim($student->nombres.' '.$student->apellidos),
+            '{{trimestre}}' => $trimester->nombre ?? 'Sin trimestre',
+            '{{perfil}}' => $roleName ?? 'Sin perfil',
+            '{{app_nombre}}' => (string) config('app.name', 'Sistema Escolar'),
+            '{{app_url}}' => (string) config('app.url'),
+        ];
+        $labels = $this->documentCatalog->labels();
+
+        return [
+            'recipient' => (string) $guardian->email_principal,
+            'subject' => $this->renderBody((string) $template->asunto, $replacements),
+            'html' => $this->renderBody((string) $template->cuerpo_html, $replacements),
+            'attachments' => collect($template->generated_documents ?? [])
+                ->map(fn (string $code) => ['code' => $code, 'label' => $labels[$code] ?? $code])
+                ->values()
+                ->all(),
         ];
     }
 

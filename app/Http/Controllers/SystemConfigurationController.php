@@ -16,7 +16,7 @@ class SystemConfigurationController extends Controller
     public function update(Request $request, SystemSettingsService $settings): RedirectResponse
     {
         $this->authorizeAdministrator(); $data = $this->validateSettings($request);
-        foreach (['mail_mailer' => 'mail.mailer', 'mail_host' => 'mail.host', 'mail_port' => 'mail.port', 'mail_username' => 'mail.username', 'mail_scheme' => 'mail.scheme', 'mail_from_address' => 'mail.from_address', 'mail_from_name' => 'mail.from_name', 'telegram_chat_id' => 'telegram.chat_id', 'telegram_timeout' => 'telegram.timeout'] as $input => $key) $settings->put($key, $data[$input] ?? '');
+        foreach (['mail_mailer' => 'mail.mailer', 'mail_host' => 'mail.host', 'mail_port' => 'mail.port', 'mail_username' => 'mail.username', 'mail_scheme' => 'mail.scheme', 'mail_from_address' => 'mail.from.address', 'mail_from_name' => 'mail.from.name', 'mail_rate_limit_per_minute' => 'mail.rate_limit_per_minute', 'telegram_chat_id' => 'telegram.chat_id', 'telegram_timeout' => 'telegram.timeout'] as $input => $key) $settings->put($key, $data[$input] ?? '');
         $settings->put('telegram.enabled', $request->boolean('telegram_enabled') ? '1' : '0');
         if ($request->filled('mail_password')) $settings->put('mail.password', $data['mail_password'], true);
         if ($request->filled('telegram_bot_token')) $settings->put('telegram.bot_token', $data['telegram_bot_token'], true);
@@ -42,7 +42,7 @@ class SystemConfigurationController extends Controller
         return $request->validate([
             'mail_mailer' => ['required', Rule::in(['smtp', 'log'])], 'mail_host' => ['nullable', 'string', 'max:150'], 'mail_port' => ['nullable', 'integer', 'min:1', 'max:65535'],
             'mail_username' => ['nullable', 'string', 'max:150'], 'mail_password' => ['nullable', 'string', 'max:255'], 'mail_scheme' => ['nullable', Rule::in(['tls', 'ssl'])],
-            'mail_from_address' => ['nullable', 'email', 'max:150'], 'mail_from_name' => ['nullable', 'string', 'max:150'], 'telegram_bot_token' => ['nullable', 'string', 'max:255'],
+            'mail_from_address' => ['nullable', 'email', 'max:150'], 'mail_from_name' => ['nullable', 'string', 'max:150'], 'mail_rate_limit_per_minute' => ['required', 'integer', 'min:1', 'max:300'], 'telegram_bot_token' => ['nullable', 'string', 'max:255'],
             'telegram_chat_id' => ['nullable', 'string', 'max:100'], 'telegram_timeout' => ['nullable', 'integer', 'min:1', 'max:30'],
         ]);
     }

@@ -22,11 +22,68 @@
                 <button class="btn btn-primary btn-sm" type="button" data-toggle="modal" data-target="#emailFormModal">
                     <i class="fas fa-plus mr-1"></i>{{ $editEmail ? 'Editar correo' : 'Nuevo correo' }}
                 </button>
+                <button class="btn btn-info btn-sm" type="button" data-toggle="modal" data-target="#emailBatchModal">
+                    <i class="fas fa-paper-plane mr-1"></i>Envio masivo
+                </button>
                 <button class="btn btn-success btn-sm" type="button" data-toggle="modal" data-target="#emailTemplateModal">
                     <i class="fas fa-file-alt mr-1"></i>{{ $editTemplate ? 'Editar plantilla' : 'Nueva plantilla' }}
                 </button>
             </div>
         </div>
+    </div>
+</div>
+
+<form method="GET" action="{{ \App\Support\AppUrl::route('emails.index') }}" class="card maint-card">
+    <div class="card-body">
+        <div class="filter-toolbar">
+            <div class="form-group"><label>Lote</label><select name="lote_id" class="form-control"><option value="">Todos los lotes</option>@foreach ($emailBatches as $batch)<option value="{{ $batch->id }}" @selected($emailFilters['lote_id'] === $batch->id)>#{{ $batch->id }} · {{ $batch->template->nombre ?? 'Plantilla' }}</option>@endforeach</select></div>
+            <div class="form-group"><label>Seccion</label><select name="seccion_id" class="form-control"><option value="">Todas las secciones</option>@foreach ($studentSections as $section)<option value="{{ $section->id }}" @selected($emailFilters['seccion_id'] === $section->id)>{{ $section->grado }} {{ $section->nombre }}</option>@endforeach</select></div>
+            <div class="form-group"><label>Desde</label><input type="date" name="fecha_desde" class="form-control" value="{{ $emailFilters['fecha_desde'] }}"></div>
+            <div class="form-group"><label>Hasta</label><input type="date" name="fecha_hasta" class="form-control" value="{{ $emailFilters['fecha_hasta'] }}"></div>
+            <div class="form-group"><button class="btn btn-outline-primary"><i class="fas fa-filter mr-1"></i>Filtrar</button> <a class="btn btn-default" href="{{ \App\Support\AppUrl::route('emails.index') }}">Limpiar</a></div>
+        </div>
+    </div>
+</form>
+
+<div class="card maint-card">
+    <div class="card-header border-0">
+        <h3 class="card-title">Lotes de envio recientes</h3>
+        <div class="card-tools text-muted small">Los correos se procesan en segundo plano.</div>
+    </div>
+    <div class="card-body table-responsive p-0">
+        <table class="table table-hover maint-table mb-0">
+            <thead class="bg-light"><tr><th>#</th><th>Plantilla</th><th>Seccion</th><th>Trimestre</th><th>Progreso</th><th>Resultado</th><th>Estado</th><th>Acciones</th></tr></thead>
+            <tbody>
+            @forelse ($emailBatches as $batch)
+                @php($percent = $batch->total > 0 ? (int) round(($batch->procesados / $batch->total) * 100) : 0)
+                <tr>
+                    <td>{{ $batch->id }}</td>
+                    <td>{{ $batch->template->nombre ?? 'Plantilla eliminada' }}</td>
+                    <td>{{ ($batch->section->grado ?? '').' '.($batch->section->nombre ?? '') }}</td>
+                    <td>{{ $batch->trimestre }}</td>
+                    <td style="min-width:160px;">
+                        <div class="progress progress-xs mb-1"><div class="progress-bar {{ $batch->estado === 'completado_con_errores' ? 'bg-warning' : 'bg-info' }}" style="width:{{ $percent }}%"></div></div>
+                        <small>{{ $batch->procesados }}/{{ $batch->total }} procesados ({{ $percent }}%)</small>
+                    </td>
+                    <td><span class="text-success">{{ $batch->enviados }} enviados</span> · <span class="text-danger">{{ $batch->fallidos }} fallidos</span>@if($batch->omitidos)<br><small class="text-muted">{{ $batch->omitidos }} omitidos</small>@endif</td>
+                    <td>
+                        @if ($batch->estado === 'procesando')<span class="badge badge-info">En proceso</span>
+                        @elseif ($batch->estado === 'completado')<span class="badge badge-success">Completado</span>
+                        @else<span class="badge badge-warning">Con errores</span>
+                        @endif
+                    </td>
+                    <td class="maint-actions-cell">
+                        <a class="btn btn-xs btn-outline-success" title="Exportar resultados" href="{{ \App\Support\AppUrl::route('emails.batches.export', ['batch' => $batch->id]) }}"><i class="fas fa-file-csv"></i></a>
+                        @if ($batch->fallidos > 0 && $batch->estado !== 'procesando')
+                            <form method="POST" action="{{ \App\Support\AppUrl::route('emails.batches.retry', ['batch' => $batch->id]) }}" data-swal-confirm="true" data-swal-title="Reintentar correos fallidos" data-swal-text="Solo se enviaran nuevamente los correos fallidos de este lote." data-swal-confirm-label="Si, reintentar">@csrf<button class="btn btn-xs btn-warning" title="Reintentar fallidos"><i class="fas fa-redo"></i></button></form>
+                        @endif
+                    </td>
+                </tr>
+            @empty
+                <tr><td colspan="8" class="text-center text-muted">Aun no hay lotes masivos.</td></tr>
+            @endforelse
+            </tbody>
+        </table>
     </div>
 </div>
 
@@ -135,7 +192,9 @@
                             </td>
                             <td>{{ $email->trimestre }}</td>
                             <td>
-                                @if ($email->estado === 'enviado')
+                                @if ($email->en_cola)
+                                    <span class="badge badge-info">En cola</span>
+                                @elseif ($email->estado === 'enviado')
                                     <span class="badge badge-success">Enviado</span>
                                 @elseif ($email->estado === 'pendiente')
                                     <span class="badge badge-warning">Pendiente</span>
@@ -156,8 +215,10 @@
                                 @endif
                             </td>
                             <td class="maint-actions-cell">
-                                <form method="POST" action="{{ \App\Support\AppUrl::route('emails.send', ['dispatch' => $email->id]) }}">@csrf<button class="btn btn-xs btn-info"><i class="fas fa-paper-plane"></i></button></form>
-                                <a href="{{ \App\Support\AppUrl::route('emails.index') }}?edit_email={{ $email->id }}" class="btn btn-xs btn-warning"><i class="fas fa-pen"></i></a>
+                                @if (! $email->en_cola)
+                                    <form method="POST" action="{{ \App\Support\AppUrl::route('emails.send', ['dispatch' => $email->id]) }}">@csrf<button class="btn btn-xs btn-info" title="Enviar en segundo plano"><i class="fas fa-paper-plane"></i></button></form>
+                                @endif
+                                @if (! $email->en_cola)<a href="{{ \App\Support\AppUrl::route('emails.index') }}?edit_email={{ $email->id }}" class="btn btn-xs btn-warning"><i class="fas fa-pen"></i></a>@endif
                                 <form method="POST" action="{{ \App\Support\AppUrl::route('emails.destroy', ['dispatch' => $email->id]) }}" data-swal-confirm="true" data-swal-title="Desactivar registro de correo" data-swal-text="El historial quedara oculto del mantenimiento, pero no se eliminara fisicamente." data-swal-confirm-label="Si, desactivar">@csrf @method('DELETE')<button class="btn btn-xs btn-danger"><i class="fas fa-user-slash"></i></button></form>
                             </td>
                         </tr>
@@ -172,6 +233,50 @@
                     </tbody>
                 </table>
             </div>
+        </div>
+    </div>
+</div>
+
+<div class="modal fade" id="emailBatchModal" tabindex="-1" role="dialog" aria-hidden="true">
+    <div class="modal-dialog modal-lg modal-dialog-centered" role="document">
+        <div class="modal-content">
+            <div class="modal-header">
+                <h5 class="modal-title">Crear envio masivo</h5>
+                <button type="button" class="close" data-dismiss="modal"><span>&times;</span></button>
+            </div>
+            <form method="POST" action="{{ \App\Support\AppUrl::route('emails.batches.store') }}">
+                @csrf
+                <div class="modal-body">
+                    <div class="alert alert-info py-2">Se creara un envio por cada familiar con correo valido vinculado a alumnos de la seccion. El sistema enviara los correos en segundo plano.</div>
+                    <div class="row">
+                        <div class="col-md-4 form-group">
+                            <label>Plantilla</label>
+                            <select name="plantilla_id" class="form-control" required>
+                                <option value="">Seleccione una plantilla</option>
+                                @foreach ($templates as $template)<option value="{{ $template->id }}">{{ $template->nombre }}</option>@endforeach
+                            </select>
+                        </div>
+                        <div class="col-md-4 form-group">
+                            <label>Seccion</label>
+                            <select name="seccion_id" class="form-control" required>
+                                <option value="">Seleccione una seccion</option>
+                                @foreach ($studentSections as $section)<option value="{{ $section->id }}">{{ $section->grado }} {{ $section->nombre }}</option>@endforeach
+                            </select>
+                        </div>
+                        <div class="col-md-4 form-group">
+                            <label>Trimestre</label>
+                            <select name="trimestre_id" class="form-control" required>
+                                @foreach ($trimesters as $trimester)<option value="{{ $trimester->id }}">{{ $trimester->nombre }}</option>@endforeach
+                            </select>
+                        </div>
+                    </div>
+                    <div class="custom-control custom-checkbox">
+                        <input type="checkbox" class="custom-control-input" id="batchResend" name="reenviar" value="1">
+                        <label class="custom-control-label" for="batchResend">Reenviar incluso a destinatarios que ya recibieron esta plantilla en este trimestre.</label>
+                    </div>
+                </div>
+                <div class="modal-footer"><button type="button" class="btn btn-default" data-dismiss="modal">Cancelar</button><button class="btn btn-info"><i class="fas fa-paper-plane mr-1"></i>Crear lote de envio</button></div>
+            </form>
         </div>
     </div>
 </div>
@@ -242,6 +347,7 @@
                             </select>
                         </div>
                     </div>
+                    <button type="button" class="btn btn-outline-secondary btn-sm" id="email-preview-button"><i class="fas fa-eye mr-1"></i>Vista previa</button>
                     <button class="btn btn-primary btn-sm">{{ $editEmail ? 'Guardar cambios' : 'Agregar registro' }}</button>
                     @if ($editEmail)<a href="{{ \App\Support\AppUrl::route('emails.index') }}" class="btn btn-default btn-sm">Cancelar</a>@endif
                 </form>
@@ -318,10 +424,26 @@
 
         const sectionSelect = document.getElementById('email-section-filter');
         const studentSelect = document.getElementById('email-student-filter');
+        const previewButton = document.getElementById('email-preview-button');
 
-        if (!sectionSelect || !studentSelect) {
-            return;
+        if (previewButton) {
+            previewButton.addEventListener('click', function () {
+                const templateId = document.querySelector('select[name="plantilla_id"]')?.value;
+                const guardianId = document.querySelector('select[name="padre_id"]')?.value;
+                const studentId = document.querySelector('select[name="alumno_id"]')?.value;
+                const trimesterId = document.querySelector('select[name="trimestre_id"]')?.value;
+
+                if (!templateId || !guardianId || !studentId || !trimesterId) {
+                    Swal.fire({ icon: 'info', title: 'Completa los datos', text: 'Selecciona plantilla, familiar, alumno y trimestre para generar una vista previa.' });
+                    return;
+                }
+
+                const params = new URLSearchParams({ plantilla_id: templateId, padre_id: guardianId, alumno_id: studentId, trimestre_id: trimesterId });
+                window.open('{{ \App\Support\AppUrl::route('emails.preview') }}?' + params.toString(), '_blank', 'noopener');
+            });
         }
+
+        if (!sectionSelect || !studentSelect) return;
 
         const syncStudents = function () {
             const selectedSectionId = sectionSelect.value;

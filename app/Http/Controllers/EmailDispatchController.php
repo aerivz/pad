@@ -5,10 +5,9 @@ namespace App\Http\Controllers;
 use App\Models\EmailDispatch;
 use App\Models\EmailTemplate;
 use App\Models\User;
-use App\Services\EmailDeliveryService;
+use App\Jobs\SendEmailDispatchJob;
 use App\Support\AppUrl;
 use Illuminate\Support\Facades\Auth;
-use Illuminate\Support\Carbon;
 use Illuminate\Http\RedirectResponse;
 use Illuminate\Http\Request;
 use Illuminate\Support\Facades\DB;
@@ -36,6 +35,10 @@ class EmailDispatchController extends Controller
 
     public function update(Request $request, EmailDispatch $dispatch): RedirectResponse
     {
+        if ($dispatch->en_cola) {
+            return redirect(AppUrl::route('emails.index'))->with('error', 'No puedes editar un correo mientras esta en cola.');
+        }
+
         $data = $this->validateDispatch($request);
         $template = EmailTemplate::with('roles')->findOrFail((int) $data['plantilla_id']);
         $this->guardTemplateAccess($template);
@@ -53,12 +56,16 @@ class EmailDispatchController extends Controller
 
     public function destroy(EmailDispatch $dispatch): RedirectResponse
     {
+        if ($dispatch->en_cola) {
+            return redirect(AppUrl::route('emails.index'))->with('error', 'No puedes desactivar un correo mientras esta en cola.');
+        }
+
         $dispatch->update(['activo' => false]);
 
         return redirect(AppUrl::route('emails.index'))->with('status', 'Registro de correo desactivado correctamente.');
     }
 
-    public function send(EmailDispatch $dispatch, EmailDeliveryService $deliveryService): RedirectResponse
+    public function send(EmailDispatch $dispatch): RedirectResponse
     {
         $dispatch->load('template.roles');
 
@@ -68,28 +75,20 @@ class EmailDispatchController extends Controller
 
         $this->guardTemplateAccess($dispatch->template);
 
-        try {
-            $result = $deliveryService->sendDispatch($dispatch, Auth::user());
-
-            $dispatch->update([
-                'estado' => 'enviado',
-                'usuario_id' => Auth::id(),
-                'destinatario_email' => $result['recipient'],
-                'adjuntos_generados' => $result['attachments'],
-                'error_mensaje' => null,
-                'enviado_en' => Carbon::now(),
-            ]);
-
-            return redirect(AppUrl::route('emails.index'))->with('status', 'Correo enviado correctamente.');
-        } catch (\Throwable $exception) {
-            $dispatch->update([
-                'estado' => 'fallido',
-                'usuario_id' => Auth::id(),
-                'error_mensaje' => $exception->getMessage(),
-            ]);
-
-            return redirect(AppUrl::route('emails.index'))->with('error', 'No se pudo enviar el correo: '.$exception->getMessage());
+        if ($dispatch->en_cola) {
+            return redirect(AppUrl::route('emails.index'))->with('error', 'Este correo ya esta en cola para envio.');
         }
+
+        $dispatch->update([
+            'estado' => 'pendiente',
+            'en_cola' => true,
+            'usuario_id' => Auth::id(),
+            'error_mensaje' => null,
+        ]);
+
+        SendEmailDispatchJob::dispatch($dispatch->id)->onConnection('database')->onQueue('emails');
+
+        return redirect(AppUrl::route('emails.index'))->with('status', 'Correo enviado a la cola de procesamiento.');
     }
 
     private function validateDispatch(Request $request): array

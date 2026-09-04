@@ -6,6 +6,7 @@ use Barryvdh\DomPDF\Facade\Pdf;
 use App\Models\Assignment;
 use App\Models\CollectorTemplate;
 use App\Models\EmailDispatch;
+use App\Models\EmailBatch;
 use App\Models\EmailTemplate;
 use App\Models\CollectorCategory;
 use App\Models\Guardian;
@@ -249,6 +250,13 @@ class PanelController extends Controller
             ...$this->baseData(),
             'activeMenu' => 'emails',
             'emails' => $this->emailsData(),
+            'emailBatches' => $this->emailBatchesData(),
+            'emailFilters' => [
+                'lote_id' => request()->integer('lote_id'),
+                'seccion_id' => request()->integer('seccion_id'),
+                'fecha_desde' => request()->string('fecha_desde')->toString(),
+                'fecha_hasta' => request()->string('fecha_hasta')->toString(),
+            ],
             'templates' => $availableTemplates,
             'templateCatalog' => EmailTemplate::active()->with('roles')->orderBy('nombre')->get(),
             'familyMembers' => Guardian::active()->orderBy('nombres')->orderBy('apellidos')->get(),
@@ -597,6 +605,8 @@ class PanelController extends Controller
 
     private function emailsData()
     {
+        $filters = request()->only(['lote_id', 'seccion_id', 'fecha_desde', 'fecha_hasta']);
+
         return DB::table('envios_correo as ec')
             ->where('ec.activo', true)
             ->join('plantillas_correo as pc', function ($join) {
@@ -613,7 +623,11 @@ class PanelController extends Controller
                 $join->on('pa.padre_id', '=', 'p.id')->on('pa.alumno_id', '=', 'a.id');
             })
             ->leftJoin('usuarios as u', 'u.id', '=', 'ec.usuario_id')
-            ->select('ec.id', 'ec.plantilla_id', 'ec.padre_id', 'ec.alumno_id', 'ec.trimestre_id', 'ec.estado', 'ec.destinatario_email', 'ec.adjuntos_generados', 'ec.error_mensaje', 'ec.enviado_en', 'pc.nombre as plantilla', 'p.nombres', 'p.apellidos', 'p.email_principal', 'a.nombres as alumno_nombres', 'a.apellidos as alumno_apellidos', 't.nombre as trimestre', 'pa.parentesco', 'u.nombre_usuario')
+            ->when(filled($filters['lote_id'] ?? null), fn ($query) => $query->where('ec.lote_id', (int) $filters['lote_id']))
+            ->when(filled($filters['seccion_id'] ?? null), fn ($query) => $query->where('a.seccion_id', (int) $filters['seccion_id']))
+            ->when(filled($filters['fecha_desde'] ?? null), fn ($query) => $query->whereDate('ec.enviado_en', '>=', $filters['fecha_desde']))
+            ->when(filled($filters['fecha_hasta'] ?? null), fn ($query) => $query->whereDate('ec.enviado_en', '<=', $filters['fecha_hasta']))
+            ->select('ec.id', 'ec.lote_id', 'ec.plantilla_id', 'ec.padre_id', 'ec.alumno_id', 'ec.trimestre_id', 'ec.estado', 'ec.en_cola', 'ec.destinatario_email', 'ec.adjuntos_generados', 'ec.error_mensaje', 'ec.enviado_en', 'pc.nombre as plantilla', 'p.nombres', 'p.apellidos', 'p.email_principal', 'a.nombres as alumno_nombres', 'a.apellidos as alumno_apellidos', 't.nombre as trimestre', 'pa.parentesco', 'u.nombre_usuario')
             ->orderByDesc('ec.id')
             ->get()
             ->map(function ($row) {
@@ -623,6 +637,17 @@ class PanelController extends Controller
 
                 return $row;
             });
+    }
+
+    private function emailBatchesData()
+    {
+        return EmailBatch::query()
+            ->with(['template:id,nombre', 'section:id,grado,nombre'])
+            ->join('trimestres as t', 't.id', '=', 'lotes_envio_correo.trimestre_id')
+            ->select('lotes_envio_correo.*', 't.nombre as trimestre')
+            ->latest('lotes_envio_correo.id')
+            ->limit(12)
+            ->get();
     }
 
     private function availableEmailTemplates()

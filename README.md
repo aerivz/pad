@@ -61,6 +61,9 @@ El proyecto fue montado para ejecutarse en entorno local con XAMPP, PHP 8.2 y My
 - Registro de envios por plantilla, familiar, alumno y trimestre.
 - Control de estado: pendiente, enviado o fallido.
 - Validacion de relacion real entre familiar y alumno.
+- Plantillas HTML con variables, perfiles autorizados y adjuntos PDF generados por el sistema.
+- Vista previa antes de enviar y envios masivos por seccion y trimestre.
+- Cola con reintentos, limite de correos por minuto, historial CSV y aviso al finalizar cada lote.
 
 ### 6. Boletines
 
@@ -174,6 +177,29 @@ Usuario administrativo de prueba:
 - Usuario: `admin`
 - Contrasena: `123456`
 
+## Activar correos en cola
+
+1. Configure SMTP, remitente y limite por minuto en `/pad/configuracion`.
+2. Ejecute migraciones para crear lotes y campos de cola:
+
+```bash
+php artisan migrate --force
+```
+
+3. En desarrollo, deje worker activo:
+
+```bash
+php artisan queue:work database --queue=emails --tries=3 --timeout=180
+```
+
+4. En hosting compartido, cree cron cada minuto. Laravel inicia worker corto y procesa correos pendientes:
+
+```bash
+* * * * * cd /ruta/a/pad && /ruta/a/php artisan schedule:run >> /dev/null 2>&1
+```
+
+Use ejecutable PHP 8.2+ configurado por hosting. El sistema notifica al creador del lote y usuarios administradores cuando termina.
+
 ## Rutas principales
 
 - `/pad/login`
@@ -220,7 +246,6 @@ Para que otro Codex o desarrollador pueda entender rapido la base del sistema, r
 - Historial de actividad por usuario.
 - Permisos por accion ademas de permisos por menu.
 - Panel de reportes estadisticos avanzados.
-- Integracion real con servicio de correo SMTP.
 
 ## Autor
 
