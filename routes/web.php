@@ -13,6 +13,7 @@ use App\Http\Controllers\GuardianController;
 use App\Http\Controllers\MediaController;
 use App\Http\Controllers\MenuManagementController;
 use App\Http\Controllers\PanelController;
+use App\Http\Controllers\PwaAssetController;
 use App\Http\Controllers\RolePermissionController;
 use App\Http\Controllers\SectionController;
 use App\Http\Controllers\StudentController;
@@ -54,6 +55,15 @@ Route::get('/media/{path}', [MediaController::class, 'show'])
     ->name('media.show');
 Route::get('/pad/media/{path}', [MediaController::class, 'show'])
     ->where('path', '.*');
+
+Route::get('/manifest.webmanifest', [PwaAssetController::class, 'manifest'])->name('pwa.manifest');
+Route::get('/service-worker.js', [PwaAssetController::class, 'serviceWorker'])->name('pwa.service-worker');
+Route::get('/offline.html', [PwaAssetController::class, 'offline'])->name('pwa.offline');
+Route::get('/images/pwa/{name}', [PwaAssetController::class, 'icon'])->where('name', 'icon-(192|512)\\.png');
+Route::get('/pad/manifest.webmanifest', [PwaAssetController::class, 'manifest']);
+Route::get('/pad/service-worker.js', [PwaAssetController::class, 'serviceWorker']);
+Route::get('/pad/offline.html', [PwaAssetController::class, 'offline']);
+Route::get('/pad/images/pwa/{name}', [PwaAssetController::class, 'icon'])->where('name', 'icon-(192|512)\\.png');
 
 Route::middleware('guest')->group(function () {
     Route::get('/login', [AuthController::class, 'create'])->name('login');
