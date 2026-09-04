@@ -14,6 +14,7 @@ use App\Models\Menu;
 use App\Models\Role;
 use App\Models\Section;
 use App\Models\Student;
+use App\Models\StudentAttendance;
 use App\Models\Subject;
 use App\Models\StudentPeriodExam;
 use App\Models\SystemBackup;
@@ -59,6 +60,60 @@ class PanelController extends Controller
             'sections' => $this->sectionsData(),
             'students' => $this->studentsData(),
             'editStudent' => request()->filled('edit_student') ? Student::active()->find(request()->integer('edit_student')) : null,
+        ]);
+    }
+
+    public function attendance(): View
+    {
+        $years = Section::active()
+            ->whereNotNull('anio_escolar')
+            ->distinct()
+            ->orderByDesc('anio_escolar')
+            ->pluck('anio_escolar');
+        $selectedYear = request()->integer('anio_escolar') ?: $years->first();
+        $sections = $this->attendanceSections($selectedYear);
+        $selectedSectionId = request()->integer('seccion_id') ?: $sections->first()?->id;
+        $selectedDate = request()->filled('fecha') && strtotime((string) request('fecha'))
+            ? (string) request('fecha')
+            : now()->toDateString();
+        $students = $selectedSectionId
+            ? Student::active()->where('seccion_id', $selectedSectionId)->orderBy('apellidos')->orderBy('nombres')->get()
+            : collect();
+        $records = $students->isEmpty()
+            ? collect()
+            : StudentAttendance::query()
+                ->whereIn('alumno_id', $students->pluck('id'))
+                ->whereDate('fecha', $selectedDate)
+                ->get()
+                ->keyBy('alumno_id');
+        $attendanceStudents = $students->map(function (Student $student) use ($records): array {
+            $record = $records->get($student->id);
+
+            return [
+                'id' => $student->id,
+                'name' => trim($student->nombres.' '.$student->apellidos),
+                'estado' => $record?->estado,
+                'justificante' => $record?->justificante,
+            ];
+        });
+
+        return view('panel.attendance', [
+            ...$this->baseData(),
+            'activeMenu' => 'attendance',
+            'attendanceYears' => $years,
+            'attendanceSections' => $sections,
+            'attendanceStudents' => $attendanceStudents,
+            'attendanceFilters' => [
+                'anio_escolar' => $selectedYear,
+                'seccion_id' => $selectedSectionId,
+                'fecha' => $selectedDate,
+            ],
+            'attendanceSummary' => [
+                'presentes' => $attendanceStudents->where('estado', 'presente')->count(),
+                'ausentes' => $attendanceStudents->where('estado', 'ausente')->count(),
+                'justificados' => $attendanceStudents->where('estado', 'justificado')->count(),
+                'pendientes' => $attendanceStudents->filter(fn (array $student) => $student['estado'] === null)->count(),
+            ],
         ]);
     }
 
@@ -1483,6 +1538,21 @@ class PanelController extends Controller
             ->orderBy('grado')
             ->orderBy('nombre')
             ->get(['id', 'grado', 'nombre', 'anio_escolar']);
+    }
+
+    private function attendanceSections(?int $year)
+    {
+        $query = Section::active()
+            ->when($year, fn ($builder) => $builder->where('anio_escolar', $year));
+
+        if ($this->professorUserActive()) {
+            $query->where('titular_profesor_id', $this->currentTeacherId() ?? -1);
+        }
+
+        return $query
+            ->orderBy('grado')
+            ->orderBy('nombre')
+            ->get(['id', 'grado', 'nombre', 'anio_escolar', 'titular_profesor_id']);
     }
 
     private function subjectsForFilters(?int $year, ?int $sectionId)

@@ -2,6 +2,7 @@
 
 use App\Http\Controllers\AuthController;
 use App\Http\Controllers\AssignmentController;
+use App\Http\Controllers\AttendanceController;
 use App\Http\Controllers\CollectorTemplateController;
 use App\Http\Controllers\EmailDispatchController;
 use App\Http\Controllers\EmailBatchController;
@@ -76,6 +77,11 @@ Route::middleware('auth')->group(function () {
     Route::post('/alumnos', [StudentController::class, 'store'])->middleware('menu.access:students')->name('students.store');
     Route::patch('/alumnos/{student}', [StudentController::class, 'update'])->middleware('menu.access:students')->name('students.update');
     Route::delete('/alumnos/{student}', [StudentController::class, 'destroy'])->middleware('menu.access:students')->name('students.destroy');
+
+    Route::get('/asistencia', [PanelController::class, 'attendance'])->middleware('menu.access:attendance')->name('attendance.index');
+    Route::post('/asistencia', [AttendanceController::class, 'sync'])->middleware('menu.access:attendance')->name('attendance.sync');
+    Route::post('/asistencia/{student}', [AttendanceController::class, 'mark'])->middleware('menu.access:attendance')->name('attendance.mark');
+    Route::post('/asistencia/{student}/restaurar', [AttendanceController::class, 'restore'])->middleware('menu.access:attendance')->name('attendance.restore');
 
     Route::get('/profesores', [PanelController::class, 'teachers'])->middleware('menu.access:teachers')->name('teachers.index');
     Route::post('/profesores', [TeacherController::class, 'store'])->middleware('menu.access:teachers')->name('teachers.store');
@@ -165,6 +171,11 @@ Route::prefix('pad')->middleware('auth')->group(function () {
     Route::post('/alumnos', [StudentController::class, 'store'])->middleware('menu.access:students');
     Route::patch('/alumnos/{student}', [StudentController::class, 'update'])->middleware('menu.access:students');
     Route::delete('/alumnos/{student}', [StudentController::class, 'destroy'])->middleware('menu.access:students');
+
+    Route::get('/asistencia', [PanelController::class, 'attendance'])->middleware('menu.access:attendance');
+    Route::post('/asistencia', [AttendanceController::class, 'sync'])->middleware('menu.access:attendance');
+    Route::post('/asistencia/{student}', [AttendanceController::class, 'mark'])->middleware('menu.access:attendance');
+    Route::post('/asistencia/{student}/restaurar', [AttendanceController::class, 'restore'])->middleware('menu.access:attendance');
 
     Route::get('/profesores', [PanelController::class, 'teachers'])->middleware('menu.access:teachers');
     Route::post('/profesores', [TeacherController::class, 'store'])->middleware('menu.access:teachers');
