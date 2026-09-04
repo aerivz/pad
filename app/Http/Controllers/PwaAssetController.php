@@ -8,7 +8,9 @@ class PwaAssetController extends Controller
 {
     public function manifest(): Response
     {
-        return $this->asset('manifest.webmanifest', 'application/manifest+json; charset=utf-8');
+        return $this->asset('manifest.webmanifest', 'application/manifest+json; charset=utf-8', [
+            'Cache-Control' => 'no-cache, must-revalidate',
+        ]);
     }
 
     public function serviceWorker(): Response
