@@ -40,7 +40,7 @@
             <div class="form-group"><label>Seccion</label><select name="seccion_id" class="form-control"><option value="">Todas las secciones</option>@foreach ($studentSections as $section)<option value="{{ $section->id }}" @selected($emailFilters['seccion_id'] === $section->id)>{{ $section->grado }} {{ $section->nombre }}</option>@endforeach</select></div>
             <div class="form-group"><label>Desde</label><input type="date" name="fecha_desde" class="form-control" value="{{ $emailFilters['fecha_desde'] }}"></div>
             <div class="form-group"><label>Hasta</label><input type="date" name="fecha_hasta" class="form-control" value="{{ $emailFilters['fecha_hasta'] }}"></div>
-            <div class="form-group"><button class="btn btn-outline-primary"><i class="fas fa-filter mr-1"></i>Filtrar</button> <a class="btn btn-default" href="{{ \App\Support\AppUrl::route('emails.index') }}">Limpiar</a></div>
+            <div class="form-group"><button class="btn btn-outline-primary"><i class="fas fa-filter mr-1"></i>Filtrar</button> <a class="btn btn-outline-secondary" href="{{ \App\Support\AppUrl::route('emails.index') }}">Limpiar</a></div>
         </div>
     </div>
 </form>
@@ -400,7 +400,7 @@
                     <div class="form-group mb-2">
                         <label>Cuerpo HTML</label>
                         <textarea name="cuerpo_html" rows="8" class="form-control" placeholder="<h1>Hola</h1><p>Contenido...</p>" required>{{ old('cuerpo_html', $editTemplate->cuerpo_html ?? '') }}</textarea>
-                        <small class="text-muted">Puedes usar HTML basico. Variables disponibles: {{'{{familiar_nombre}}'}}, {{'{{alumno_nombre}}'}}, {{'{{trimestre}}'}}, {{'{{perfil}}'}}, {{'{{app_nombre}}'}}, {{'{{app_url}}'}}.</small>
+                        <small class="text-muted">Puedes usar HTML basico. Variables disponibles: &#123;&#123;familiar_nombre&#125;&#125;, &#123;&#123;alumno_nombre&#125;&#125;, &#123;&#123;trimestre&#125;&#125;, &#123;&#123;perfil&#125;&#125;, &#123;&#123;app_nombre&#125;&#125;, &#123;&#123;app_url&#125;&#125;.</small>
                     </div>
                     <button class="btn btn-success btn-sm">{{ $editTemplate ? 'Guardar plantilla' : 'Agregar plantilla' }}</button>
                     @if ($editTemplate)<a href="{{ \App\Support\AppUrl::route('emails.index') }}" class="btn btn-default btn-sm">Cancelar</a>@endif

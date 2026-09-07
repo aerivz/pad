@@ -4,6 +4,7 @@ namespace App\Jobs;
 
 use App\Models\EmailBatch;
 use App\Models\User;
+use App\Models\UserNotification;
 use Illuminate\Contracts\Queue\ShouldQueue;
 use Illuminate\Foundation\Queue\Queueable;
 use Illuminate\Support\Facades\Mail;
@@ -36,9 +37,7 @@ class NotifyEmailBatchCompletedJob implements ShouldQueue
                 $query->where('id', $batch->usuario_id)
                     ->orWhereHas('role', fn ($roleQuery) => $roleQuery->where('nombre', 'admin'));
             })
-            ->pluck('email')
-            ->unique()
-            ->values();
+            ->get(['id', 'email']);
 
         if ($recipients->isEmpty()) {
             return;
@@ -52,8 +51,18 @@ class NotifyEmailBatchCompletedJob implements ShouldQueue
             .'<p><strong>Plantilla:</strong> '.$templateName.'<br><strong>Seccion:</strong> '.$sectionName.'</p>'
             .'<p><strong>Enviados:</strong> '.$batch->enviados.'<br><strong>Fallidos:</strong> '.$batch->fallidos.'<br><strong>Omitidos:</strong> '.$batch->omitidos.'</p>';
 
+        foreach ($recipients as $recipient) {
+            UserNotification::query()->create([
+                'usuario_id' => $recipient->id,
+                'tipo' => $batch->fallidos > 0 ? 'warning' : 'success',
+                'titulo' => 'Envío masivo '.$status,
+                'mensaje' => $batch->nombre.' · '.$batch->enviados.' enviados, '.$batch->fallidos.' fallidos.',
+                'url' => '/correos?lote_id='.$batch->id,
+            ]);
+        }
+
         Mail::html($body, function ($message) use ($recipients, $batch, $status): void {
-            $message->to($recipients->all())
+            $message->to($recipients->pluck('email')->unique()->all())
                 ->subject('Envio masivo '.$status.': '.$batch->nombre);
         });
     }

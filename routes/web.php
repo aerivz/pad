@@ -12,7 +12,9 @@ use App\Http\Controllers\EvaluationController;
 use App\Http\Controllers\GuardianController;
 use App\Http\Controllers\MediaController;
 use App\Http\Controllers\MenuManagementController;
+use App\Http\Controllers\NotificationController;
 use App\Http\Controllers\PanelController;
+use App\Http\Controllers\ProfileController;
 use App\Http\Controllers\PwaAssetController;
 use App\Http\Controllers\RolePermissionController;
 use App\Http\Controllers\SectionController;
@@ -77,6 +79,11 @@ Route::prefix('pad')->middleware('guest')->group(function () {
 
 Route::middleware('auth')->group(function () {
     Route::post('/logout', [AuthController::class, 'destroy'])->name('logout');
+
+    Route::get('/perfil', [ProfileController::class, 'show'])->name('profile.show');
+    Route::put('/perfil', [ProfileController::class, 'update'])->name('profile.update');
+    Route::put('/perfil/tema', [ProfileController::class, 'updateTheme'])->name('profile.theme');
+    Route::post('/notificaciones/{notification}/leer', [NotificationController::class, 'read'])->name('notifications.read');
 
     Route::get('/secciones', [PanelController::class, 'sections'])->middleware('menu.access:sections')->name('sections.index');
     Route::post('/secciones', [SectionController::class, 'store'])->middleware('menu.access:sections')->name('sections.store');
@@ -170,6 +177,10 @@ Route::middleware('auth')->group(function () {
 
 Route::prefix('pad')->middleware('auth')->group(function () {
     Route::post('/logout', [AuthController::class, 'destroy']);
+    Route::get('/perfil', [ProfileController::class, 'show']);
+    Route::put('/perfil', [ProfileController::class, 'update']);
+    Route::put('/perfil/tema', [ProfileController::class, 'updateTheme']);
+    Route::post('/notificaciones/{notification}/leer', [NotificationController::class, 'read']);
     Route::get('/', [PanelController::class, 'dashboard'])->middleware('menu.access:dashboard');
 
     Route::get('/secciones', [PanelController::class, 'sections'])->middleware('menu.access:sections');

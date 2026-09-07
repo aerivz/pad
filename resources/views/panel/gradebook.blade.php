@@ -33,6 +33,8 @@
         .collector-table-card .grade-input { width: 66px; }
     }
     .collector-readonly .grade-input[disabled] { background: #f8fafc; color: #475569; opacity: 1; }
+    .collector-period-summary { background: #f8fafc; }
+    body.dark-theme .collector-period-summary { background: #182338 !important; border-color: #40526d !important; color: #dbe4f0; }
 </style>
 @endpush
 
@@ -85,7 +87,7 @@
         @if ($selectedAssignment && $canViewGradeBook)
             <div class="row mt-3">
                 <div class="col-md-12">
-                    <div class="d-flex flex-wrap align-items-center justify-content-between px-3 py-2 rounded border bg-light" style="gap: .75rem;">
+                    <div class="collector-period-summary d-flex flex-wrap align-items-center justify-content-between px-3 py-2 rounded border" style="gap: .75rem;">
                         <div class="text-muted small">
                             Resumen anual de la materia con ponderacion 20/20/20/20/10/10.
                         </div>

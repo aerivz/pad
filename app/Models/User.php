@@ -26,6 +26,11 @@ class User extends Authenticatable
         'password_hash',
         'nombres',
         'apellidos',
+        'avatar',
+        'telefono',
+        'ubicacion',
+        'biografia',
+        'tema',
         'activo',
     ];
 

@@ -27,6 +27,22 @@
     .attendance-empty { max-width: 460px; margin: 2rem auto; text-align: center; padding: 2rem; border: 1px dashed #cbd5e1; border-radius: 1rem; color: #64748b; }
     .attendance-table .custom-control { min-width: 86px; }
     .attendance-table .attendance-reason { min-width: 220px; }
+    body.dark-theme .attendance-stat { background: #182338; border-color: #2f405b; }
+    body.dark-theme .attendance-stat span { color: #aebed1; }
+    body.dark-theme .attendance-stat.present strong { color: #74dc9b; }
+    body.dark-theme .attendance-stat.absent strong { color: #ff9ba7; }
+    body.dark-theme .attendance-stat.justified strong { color: #f3c46b; }
+    body.dark-theme .attendance-card { background: linear-gradient(145deg, #182338, #142035); border-color: #2f405b; box-shadow: 0 18px 38px rgba(0, 0, 0, .26); }
+    body.dark-theme .attendance-card h3 { color: #f1f5f9; }
+    body.dark-theme .attendance-card .attendance-index,
+    body.dark-theme .attendance-gesture,
+    body.dark-theme .attendance-empty { color: #aebed1; }
+    body.dark-theme .attendance-empty { border-color: #40526d; }
+    body.dark-theme .swipe-no { background: #3a222c; border-color: #6c3946; color: #ffb1bc; }
+    body.dark-theme .swipe-yes { background: #173f34; border-color: #2e725c; color: #a4eec1; }
+    body.dark-theme .swipe-justify { background: #433719; border-color: #806825; color: #f8d77c; }
+    body.dark-theme .attendance-current-status { background: #1d2a40 !important; border-color: #40526d !important; color: #dbe4f0 !important; }
+    body.dark-theme .attendance-desktop .card-footer.bg-white { background: #1d2a40 !important; border-color: #2f405b !important; }
     @media (max-width: 767.98px) {
         .attendance-filters { grid-template-columns: 1fr 1fr; }
         .attendance-filters .attendance-filter-submit { grid-column: span 2; }
