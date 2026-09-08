@@ -72,6 +72,12 @@ class AppUrl
         $runtimePrefix = self::runtimePrefix();
         $trimmed = trim($path, '/');
 
+        // Existing menu rows may still contain the former /pad prefix.
+        // When the configured application URL is at the domain root, remove it.
+        if ($runtimePrefix === '' && ($trimmed === 'pad' || Str::startsWith($trimmed, 'pad/'))) {
+            $trimmed = ltrim(substr($trimmed, 3), '/');
+        }
+
         if ($canonicalPrefix !== '' && $runtimePrefix !== $canonicalPrefix) {
             if ($trimmed === $canonicalPrefix) {
                 $trimmed = '';
@@ -128,12 +134,8 @@ class AppUrl
 
     private static function runtimePrefix(): string
     {
-        $segment = trim((string) request()->segment(1), '/');
+        $configuredPath = trim((string) parse_url((string) config('app.url'), PHP_URL_PATH), '/');
 
-        if ($segment === 'pad') {
-            return 'pad';
-        }
-
-        return '';
+        return $configuredPath;
     }
 }
