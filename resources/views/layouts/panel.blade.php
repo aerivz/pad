@@ -348,6 +348,11 @@
 <body class="hold-transition sidebar-mini layout-fixed {{ auth()->user()?->tema === 'dark' ? 'dark-theme' : '' }}">
 @php
     $user = auth()->user();
+    $canAccessEmails = $user !== null && $user->hasMenuAccess('emails');
+    $initials = strtoupper(substr($user?->nombres ?? 'A', 0, 1).substr($user?->apellidos ?? 'D', 0, 1));
+    $hasUserAvatar = filled($user?->avatar);
+    $userAvatarUrl = $hasUserAvatar ? $user->avatar_url : null;
+    $profileUrl = \App\Support\AppUrl::route('profile.show');
     $menuSearchItems = collect($menu)->flatMap(function (array $item) {
         $children = $item['children'] ?? [];
 
@@ -367,7 +372,6 @@
             <div id="menuSearchResults" class="menu-search-results"></div>
         </div>
         <ul class="navbar-nav ml-auto">
-            @php($canAccessEmails = $user?->hasMenuAccess('emails') ?? false)
             <li class="nav-item">
                 <button type="button" class="nav-link header-icon-button" id="themeToggle" aria-label="Cambiar tema" title="Cambiar tema"><i class="far fa-moon"></i></button>
             </li>
@@ -394,10 +398,6 @@
                 <li class="nav-item header-email-link"><a href="{{ \App\Support\AppUrl::route('emails.index') }}" class="nav-link header-icon-button" title="Correos"><i class="far fa-envelope"></i></a></li>
             @endif
             <li class="nav-item dropdown">
-                @php($initials = strtoupper(substr($user->nombres ?? 'A', 0, 1).substr($user->apellidos ?? 'D', 0, 1)))
-                @php($hasUserAvatar = filled($user?->avatar))
-                @php($userAvatarUrl = $hasUserAvatar ? $user->avatar_url : null)
-                @php($profileUrl = \App\Support\AppUrl::route('profile.show'))
                 <a class="nav-link header-user-toggle" data-toggle="dropdown" href="#" aria-label="Menú de usuario">
                     @if ($hasUserAvatar)
                         <img src="{{ $userAvatarUrl }}" alt="Avatar" class="user-avatar-image mr-1">
