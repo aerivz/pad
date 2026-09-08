@@ -510,10 +510,15 @@
 <script src="https://cdnjs.cloudflare.com/ajax/libs/admin-lte/3.2.0/js/adminlte.min.js"></script>
 <script src="https://cdn.jsdelivr.net/npm/sweetalert2@11"></script>
 @stack('scripts')
+@php
+    $savedTheme = in_array(data_get($user ?? null, 'tema'), ['light', 'dark'], true)
+        ? data_get($user, 'tema')
+        : 'light';
+@endphp
 <script>
     document.addEventListener('DOMContentLoaded', function () {
         const themeToggle = document.getElementById('themeToggle');
-        const savedTheme = @json(in_array($user?->tema, ['light', 'dark'], true) ? $user->tema : 'light');
+        const savedTheme = @json($savedTheme);
         const themeUpdateUrl = @json(\App\Support\AppUrl::route('profile.theme'));
         const csrfToken = @json(csrf_token());
         const applyTheme = function (theme) {
