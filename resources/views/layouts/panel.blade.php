@@ -441,19 +441,26 @@
             <nav class="mt-2">
                 <ul class="nav nav-pills nav-sidebar flex-column" data-widget="treeview" role="menu" data-accordion="false">
                     @foreach ($menu as $key => $item)
-                        @php($children = $item['children'] ?? [])
-                        @php($isChildActive = collect($children)->contains(fn ($child) => $activeMenu === $child['key']))
-                        @php($itemClasses = ['nav-item'])
-                        @if ($key === 'dashboard')
-                            @php($itemClasses[] = 'menu-dashboard')
-                        @endif
-                        @if (count($children) > 0)
-                            @php($itemClasses[] = 'has-treeview')
-                            @php($itemClasses[] = 'menu-group')
-                            @if ($activeMenu === $key || $isChildActive)
-                                @php($itemClasses[] = 'menu-open')
-                            @endif
-                        @endif
+                        @php
+                            $children = $item['children'] ?? [];
+                            $isChildActive = collect($children)->contains(
+                                fn ($child) => $activeMenu === $child['key']
+                            );
+                            $itemClasses = ['nav-item'];
+
+                            if ($key === 'dashboard') {
+                                $itemClasses[] = 'menu-dashboard';
+                            }
+
+                            if (count($children) > 0) {
+                                $itemClasses[] = 'has-treeview';
+                                $itemClasses[] = 'menu-group';
+
+                                if ($activeMenu === $key || $isChildActive) {
+                                    $itemClasses[] = 'menu-open';
+                                }
+                            }
+                        @endphp
                         <li class="{{ implode(' ', $itemClasses) }}">
                             <a href="{{ count($children) > 0 ? '#' : $item['url'] }}" class="nav-link {{ $activeMenu === $key || $isChildActive ? 'active' : '' }} {{ count($children) > 0 ? 'submenu-toggle' : '' }}" @if(count($children) > 0) data-submenu-toggle="true" role="button" aria-expanded="{{ $activeMenu === $key || $isChildActive ? 'true' : 'false' }}" @endif>
                                 <i class="nav-icon {{ $item['icon'] }}"></i>
