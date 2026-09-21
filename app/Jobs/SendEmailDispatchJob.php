@@ -21,11 +21,11 @@ class SendEmailDispatchJob implements ShouldQueue
     public int $tries = 3;
     public int $timeout = 180;
     public array $backoff = [60, 300];
-    public bool $afterCommit = true;
 
     public function __construct(public int $dispatchId)
     {
         $this->onQueue('emails');
+        $this->afterCommit();
     }
 
     public function handle(EmailDeliveryService $deliveryService, SystemSettingsService $settings): void
