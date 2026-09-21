@@ -8,7 +8,11 @@ class GradeCollectorService
 {
     public function quantityForType(string $type): int
     {
-        return $type === 'laboratorio' ? 2 : 4;
+        return match ($type) {
+            'proyecto' => 1,
+            'laboratorio' => 2,
+            default => 4,
+        };
     }
 
     public function calculateCategoryTotals(object $category, array $notes): array
@@ -20,6 +24,16 @@ class GradeCollectorService
         $note2 = $this->nullableNumber($notes['nota_2'] ?? null);
         $note3 = $this->nullableNumber($notes['nota_3'] ?? null);
         $note4 = $this->nullableNumber($notes['nota_4'] ?? null);
+
+        if ($type === 'proyecto') {
+            $weightedScore = $note1 !== null ? round($note1 * $percentage / 100, 2) : null;
+
+            return [
+                // Repeat the contribution so the existing Report Card average keeps the project's full weight.
+                'promedio_1' => $weightedScore,
+                'promedio_2' => $weightedScore,
+            ];
+        }
 
         if ($type === 'laboratorio') {
             return [

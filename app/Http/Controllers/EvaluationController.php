@@ -325,7 +325,7 @@ class EvaluationController extends Controller
                     ->ignore($category?->id),
             ],
             'porcentaje' => ['required', 'numeric', 'min:0.01', 'max:100'],
-            'tipo_calculo' => ['required', Rule::in(['normal', 'laboratorio'])],
+            'tipo_calculo' => ['required', Rule::in(['normal', 'laboratorio', 'proyecto'])],
             'orden' => ['required', 'integer', 'min:1', 'max:999'],
         ]);
     }
@@ -354,7 +354,7 @@ class EvaluationController extends Controller
     {
         $payload = [
             'nota_1' => $this->gradeCollectorService()->nullableNumber($notes['nota_1'] ?? null),
-            'nota_2' => $this->gradeCollectorService()->nullableNumber($notes['nota_2'] ?? null),
+            'nota_2' => $category->tipo_calculo !== 'proyecto' ? $this->gradeCollectorService()->nullableNumber($notes['nota_2'] ?? null) : null,
             'nota_3' => $category->tipo_calculo === 'normal' ? $this->gradeCollectorService()->nullableNumber($notes['nota_3'] ?? null) : null,
             'nota_4' => $category->tipo_calculo === 'normal' ? $this->gradeCollectorService()->nullableNumber($notes['nota_4'] ?? null) : null,
         ];

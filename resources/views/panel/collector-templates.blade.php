@@ -179,6 +179,7 @@
                                         <select name="categorias[{{ $index }}][tipo_calculo]" class="form-control">
                                             <option value="normal" @selected(($row['tipo_calculo'] ?? 'normal') === 'normal')>Normal</option>
                                             <option value="laboratorio" @selected(($row['tipo_calculo'] ?? '') === 'laboratorio')>Laboratorio</option>
+                                            <option value="proyecto" @selected(($row['tipo_calculo'] ?? '') === 'proyecto')>Proyecto</option>
                                         </select>
                                     </td>
                                     <td><input type="number" min="1" max="999" name="categorias[{{ $index }}][orden]" class="form-control template-order" value="{{ $row['orden'] ?? ($index + 1) }}" required></td>
@@ -300,6 +301,7 @@
                     <select name="categorias[${index}][tipo_calculo]" class="form-control">
                         <option value="normal">Normal</option>
                         <option value="laboratorio">Laboratorio</option>
+                        <option value="proyecto">Proyecto</option>
                     </select>
                 </td>
                 <td><input type="number" min="1" max="999" name="categorias[${index}][orden]" class="form-control template-order" value="${index + 1}" required></td>

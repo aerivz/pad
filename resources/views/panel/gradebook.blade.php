@@ -194,7 +194,7 @@
                                             <th rowspan="2" class="collector-sticky-number">#</th>
                                             <th rowspan="2" class="collector-sticky-student">Alumno</th>
                                             @foreach ($gradeBoard['categories'] as $category)
-                                                <th colspan="{{ $category->tipo_calculo === 'laboratorio' ? 4 : 6 }}" class="text-center">
+                                                <th colspan="{{ $category->tipo_calculo === 'proyecto' ? 2 : ($category->tipo_calculo === 'laboratorio' ? 4 : 6) }}" class="text-center">
                                                     {{ $category->nombre }}<br>
                                                     <small>{{ rtrim(rtrim(number_format($category->porcentaje, 2), '0'), '.') }}% | {{ $category->tipo_calculo }}</small>
                                                 </th>
@@ -206,18 +206,22 @@
                                         </tr>
                                         <tr>
                                             @foreach ($gradeBoard['categories'] as $category)
-                                                <th class="text-center">1</th>
-                                                @if ($category->tipo_calculo === 'normal')
+                                                @if ($category->tipo_calculo === 'proyecto')
+                                                    <th class="text-center">1</th>
+                                                    <th class="text-center">Ponderado</th>
+                                                @elseif ($category->tipo_calculo === 'laboratorio')
+                                                    <th class="text-center">1</th>
+                                                    <th class="text-center">PR1</th>
                                                     <th class="text-center">2</th>
-                                                @endif
-                                                <th class="text-center">PR1</th>
-                                                @if ($category->tipo_calculo === 'normal')
+                                                    <th class="text-center">PR2</th>
+                                                @else
+                                                    <th class="text-center">1</th>
+                                                    <th class="text-center">2</th>
+                                                    <th class="text-center">PR1</th>
                                                     <th class="text-center">3</th>
                                                     <th class="text-center">4</th>
-                                                @else
-                                                    <th class="text-center">2</th>
+                                                    <th class="text-center">PR2</th>
                                                 @endif
-                                                <th class="text-center">PR2</th>
                                             @endforeach
                                         </tr>
                                     </thead>
@@ -231,25 +235,27 @@
                                                 <td class="text-center">
                                                     <input type="number" step="0.01" min="0" max="100" name="grades[{{ $row['id'] }}][{{ $category->id }}][nota_1]" class="form-control form-control-sm grade-input" value="{{ old('grades.'.$row['id'].'.'.$category->id.'.nota_1', $categoryScore['nota_1'] ?? '') }}" @disabled($readOnlyGradeBook)>
                                                 </td>
-                                                @if ($category->tipo_calculo === 'normal')
+                                                @if ($category->tipo_calculo === 'proyecto')
+                                                    <td class="final-cell">{{ $categoryScore['promedio_1'] ?? '-' }}</td>
+                                                @elseif ($category->tipo_calculo === 'normal')
                                                     <td class="text-center">
                                                         <input type="number" step="0.01" min="0" max="100" name="grades[{{ $row['id'] }}][{{ $category->id }}][nota_2]" class="form-control form-control-sm grade-input" value="{{ old('grades.'.$row['id'].'.'.$category->id.'.nota_2', $categoryScore['nota_2'] ?? '') }}" @disabled($readOnlyGradeBook)>
                                                     </td>
-                                                @endif
-                                                <td class="final-cell">{{ $categoryScore['promedio_1'] ?? '-' }}</td>
-                                                @if ($category->tipo_calculo === 'normal')
+                                                    <td class="final-cell">{{ $categoryScore['promedio_1'] ?? '-' }}</td>
                                                     <td class="text-center">
                                                         <input type="number" step="0.01" min="0" max="100" name="grades[{{ $row['id'] }}][{{ $category->id }}][nota_3]" class="form-control form-control-sm grade-input" value="{{ old('grades.'.$row['id'].'.'.$category->id.'.nota_3', $categoryScore['nota_3'] ?? '') }}" @disabled($readOnlyGradeBook)>
                                                     </td>
                                                     <td class="text-center">
                                                         <input type="number" step="0.01" min="0" max="100" name="grades[{{ $row['id'] }}][{{ $category->id }}][nota_4]" class="form-control form-control-sm grade-input" value="{{ old('grades.'.$row['id'].'.'.$category->id.'.nota_4', $categoryScore['nota_4'] ?? '') }}" @disabled($readOnlyGradeBook)>
                                                     </td>
-                                                @else
+                                                    <td class="final-cell">{{ $categoryScore['promedio_2'] ?? '-' }}</td>
+                                                @elseif ($category->tipo_calculo === 'laboratorio')
+                                                    <td class="final-cell">{{ $categoryScore['promedio_1'] ?? '-' }}</td>
                                                     <td class="text-center">
                                                         <input type="number" step="0.01" min="0" max="100" name="grades[{{ $row['id'] }}][{{ $category->id }}][nota_2]" class="form-control form-control-sm grade-input" value="{{ old('grades.'.$row['id'].'.'.$category->id.'.nota_2', $categoryScore['nota_2'] ?? '') }}" @disabled($readOnlyGradeBook)>
                                                     </td>
+                                                    <td class="final-cell">{{ $categoryScore['promedio_2'] ?? '-' }}</td>
                                                 @endif
-                                                <td class="final-cell">{{ $categoryScore['promedio_2'] ?? '-' }}</td>
                                             @endforeach
                                             <td class="final-cell">{{ $row['progress_1'] }}</td>
                                             <td class="final-cell">{{ $row['progress_2'] }}</td>
@@ -431,7 +437,7 @@
 
                     <div class="form-group">
                         <label>Categoria</label>
-                        <input name="nombre" class="form-control" value="{{ old('nombre', $editCategory->nombre ?? '') }}" placeholder="Ej: Tareas, Examenes, Laboratorios" required>
+                        <input name="nombre" class="form-control" value="{{ old('nombre', $editCategory->nombre ?? '') }}" placeholder="Ej: Tareas, Laboratorios, Proyecto" required>
                     </div>
                     <div class="form-group">
                         <label>Porcentaje (%)</label>
@@ -442,6 +448,7 @@
                         <select name="tipo_calculo" class="form-control" required>
                             <option value="normal" @selected(old('tipo_calculo', $editCategory->tipo_calculo ?? 'normal') === 'normal')>Normal (4 notas)</option>
                             <option value="laboratorio" @selected(old('tipo_calculo', $editCategory->tipo_calculo ?? '') === 'laboratorio')>Laboratorio (2 notas)</option>
+                            <option value="proyecto" @selected(old('tipo_calculo', $editCategory->tipo_calculo ?? '') === 'proyecto')>Proyecto (1 nota)</option>
                         </select>
                     </div>
                     <div class="form-group">

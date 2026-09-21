@@ -104,7 +104,7 @@ class CollectorTemplateController extends Controller
             'categorias' => ['required', 'array', 'min:1'],
             'categorias.*.nombre' => ['required', 'string', 'max:120'],
             'categorias.*.porcentaje' => ['required', 'numeric', 'min:0.01', 'max:100'],
-            'categorias.*.tipo_calculo' => ['required', Rule::in(['normal', 'laboratorio'])],
+            'categorias.*.tipo_calculo' => ['required', Rule::in(['normal', 'laboratorio', 'proyecto'])],
             'categorias.*.orden' => ['required', 'integer', 'min:1', 'max:999'],
         ]);
 

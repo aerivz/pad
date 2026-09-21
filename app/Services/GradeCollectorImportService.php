@@ -334,13 +334,17 @@ class GradeCollectorImportService
 
         foreach ($categoryColumns as $categoryName => $data) {
             $quantity = count($data['raw_columns']);
-            $type = $quantity <= 2 ? 'laboratorio' : 'normal';
+            $type = match (true) {
+                $quantity === 1 => 'proyecto',
+                $quantity === 2 => 'laboratorio',
+                default => 'normal',
+            };
 
             $categories[] = [
                 'name' => $categoryName,
                 'percentage' => $data['percentage'] > 0 ? $data['percentage'] : 0,
                 'type' => $type,
-                'quantity' => $type === 'laboratorio' ? 2 : 4,
+                'quantity' => $this->collectorService->quantityForType($type),
                 'order' => $order++,
                 'columns' => $data['raw_columns'],
             ];
@@ -676,6 +680,7 @@ class GradeCollectorImportService
             'tareas' => 'Tareas',
             'examenes', 'exámenes' => 'Examenes',
             'laboratorios' => 'Laboratorios',
+            'proyecto', 'proyectos' => 'Proyecto',
             'actividades' => 'Actividades',
             'participacion', 'participación' => 'Participacion',
             'expresion oral y escrita', 'expresión oral y escrita' => 'Expresion Oral y Escrita',
