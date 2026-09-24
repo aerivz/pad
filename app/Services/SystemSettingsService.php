@@ -22,7 +22,7 @@ class SystemSettingsService
             'mail.mailers.smtp.port' => isset($settings['mail.port']) ? (int) $settings['mail.port'] : config('mail.mailers.smtp.port'),
             'mail.mailers.smtp.username' => $settings['mail.username'] ?? config('mail.mailers.smtp.username'),
             'mail.mailers.smtp.password' => $settings['mail.password'] ?? config('mail.mailers.smtp.password'),
-            'mail.mailers.smtp.scheme' => ($settings['mail.scheme'] ?? null) ?: config('mail.mailers.smtp.scheme'),
+            'mail.mailers.smtp.scheme' => $this->smtpScheme($settings['mail.scheme'] ?? config('mail.mailers.smtp.scheme')),
             'mail.from.address' => $settings['mail.from_address'] ?? config('mail.from.address'),
             'mail.from.name' => $settings['mail.from_name'] ?? config('mail.from.name'),
             'mail.rate_limit_per_minute' => isset($settings['mail.rate_limit_per_minute']) ? (int) $settings['mail.rate_limit_per_minute'] : config('mail.rate_limit_per_minute', 30),
@@ -69,5 +69,14 @@ class SystemSettingsService
                 return [$setting->clave => $value];
             })->all();
         } catch (Throwable) { return $this->settings = []; }
+    }
+
+    private function smtpScheme(?string $scheme): ?string
+    {
+        return match ($scheme) {
+            'ssl', 'smtps' => 'smtps',
+            'tls', 'smtp' => 'smtp',
+            default => null,
+        };
     }
 }
