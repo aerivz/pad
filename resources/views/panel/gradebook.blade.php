@@ -236,7 +236,7 @@
                                                     <input type="number" step="0.01" min="0" max="100" name="grades[{{ $row['id'] }}][{{ $category->id }}][nota_1]" class="form-control form-control-sm grade-input" value="{{ old('grades.'.$row['id'].'.'.$category->id.'.nota_1', $categoryScore['nota_1'] ?? '') }}" @disabled($readOnlyGradeBook)>
                                                 </td>
                                                 @if ($category->tipo_calculo === 'proyecto')
-                                                    <td class="final-cell">{{ $categoryScore['promedio_1'] ?? '-' }}</td>
+                                                    <td class="final-cell">{{ $categoryScore['promedio_2'] ?? '-' }}</td>
                                                 @elseif ($category->tipo_calculo === 'normal')
                                                     <td class="text-center">
                                                         <input type="number" step="0.01" min="0" max="100" name="grades[{{ $row['id'] }}][{{ $category->id }}][nota_2]" class="form-control form-control-sm grade-input" value="{{ old('grades.'.$row['id'].'.'.$category->id.'.nota_2', $categoryScore['nota_2'] ?? '') }}" @disabled($readOnlyGradeBook)>

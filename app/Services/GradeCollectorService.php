@@ -29,8 +29,7 @@ class GradeCollectorService
             $weightedScore = $note1 !== null ? round($note1 * $percentage / 100, 2) : null;
 
             return [
-                // Repeat the contribution so the existing Report Card average keeps the project's full weight.
-                'promedio_1' => $weightedScore,
+                'promedio_1' => null,
                 'promedio_2' => $weightedScore,
             ];
         }
