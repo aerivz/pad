@@ -10,6 +10,7 @@
             'nombre' => $item->nombre,
             'porcentaje' => rtrim(rtrim(number_format($item->porcentaje, 2, '.', ''), '0'), '.'),
             'tipo_calculo' => $item->tipo_calculo,
+            'progreso_destino' => $item->progreso_destino,
             'orden' => $item->orden,
         ])->values()->all()
         : [
@@ -166,6 +167,7 @@
                                     <th>Categoria</th>
                                     <th>%</th>
                                     <th>Tipo</th>
+                                    <th>Progress (solo Proyecto)</th>
                                     <th>Orden</th>
                                     <th></th>
                                 </tr>
@@ -182,6 +184,12 @@
                                             <option value="proyecto" @selected(($row['tipo_calculo'] ?? '') === 'proyecto')>Proyecto</option>
                                         </select>
                                     </td>
+                                    <td>
+                                        <select name="categorias[{{ $index }}][progreso_destino]" class="form-control">
+                                            <option value="progress_1" @selected(($row['progreso_destino'] ?? '') === 'progress_1')>Progress 1</option>
+                                            <option value="progress_2" @selected(($row['progreso_destino'] ?? 'progress_2') === 'progress_2')>Progress 2</option>
+                                        </select>
+                                    </td>
                                     <td><input type="number" min="1" max="999" name="categorias[{{ $index }}][orden]" class="form-control template-order" value="{{ $row['orden'] ?? ($index + 1) }}" required></td>
                                     <td class="text-right"><button type="button" class="btn btn-xs btn-danger remove-template-category"><i class="fas fa-times"></i></button></td>
                                 </tr>
@@ -189,7 +197,7 @@
                             </tbody>
                             <tfoot class="bg-light">
                                 <tr>
-                                    <th colspan="5" class="text-right">Total configurado: <span id="template-total-percentage">0%</span></th>
+                                    <th colspan="6" class="text-right">Total configurado: <span id="template-total-percentage">0%</span></th>
                                 </tr>
                             </tfoot>
                         </table>
@@ -302,6 +310,12 @@
                         <option value="normal">Normal</option>
                         <option value="laboratorio">Laboratorio</option>
                         <option value="proyecto">Proyecto</option>
+                    </select>
+                </td>
+                <td>
+                    <select name="categorias[${index}][progreso_destino]" class="form-control">
+                        <option value="progress_1">Progress 1</option>
+                        <option value="progress_2" selected>Progress 2</option>
                     </select>
                 </td>
                 <td><input type="number" min="1" max="999" name="categorias[${index}][orden]" class="form-control template-order" value="${index + 1}" required></td>

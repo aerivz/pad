@@ -42,10 +42,21 @@ class EvaluationController extends Controller
         $this->guardAssignmentEditAccess((int) $data['asignacion_id']);
         $this->guardCategoryPercentage($data['asignacion_id'], $data['trimestre_id'], (float) $data['porcentaje'], $evaluation->id);
 
-        $evaluation->update([
-            ...$data,
-            'cantidad_notas' => $this->gradeCollectorService()->quantityForType($data['tipo_calculo']),
-        ]);
+        DB::transaction(function () use ($evaluation, $data): void {
+            $evaluation->update([
+                ...$data,
+                'cantidad_notas' => $this->gradeCollectorService()->quantityForType($data['tipo_calculo']),
+            ]);
+
+            StudentCategoryGrade::query()
+                ->where('categoria_id', $evaluation->id)
+                ->get()
+                ->each(function (StudentCategoryGrade $grade) use ($evaluation): void {
+                    $grade->update($this->normalizeGradePayload($evaluation, $grade->only([
+                        'nota_1', 'nota_2', 'nota_3', 'nota_4',
+                    ])));
+                });
+        });
 
         return redirect($this->gradebookRedirect($data))
             ->with('status', 'Categoria actualizada.');
@@ -298,6 +309,7 @@ class EvaluationController extends Controller
                     'porcentaje' => $category->porcentaje,
                     'tipo_calculo' => $category->tipo_calculo,
                     'cantidad_notas' => $this->gradeCollectorService()->quantityForType($category->tipo_calculo),
+                    'progreso_destino' => $category->tipo_calculo === 'proyecto' ? ($category->progreso_destino ?? 'progress_2') : null,
                     'orden' => $category->orden ?? ($index + 1),
                     'activo' => true,
                 ]);
@@ -310,7 +322,7 @@ class EvaluationController extends Controller
 
     private function validateCategory(Request $request, ?CollectorCategory $category = null): array
     {
-        return $request->validate([
+        $data = $request->validate([
             'asignacion_id' => ['required', 'integer', 'exists:asignaciones,id'],
             'trimestre_id' => ['required', 'integer', 'exists:trimestres,id'],
             'nombre' => [
@@ -326,8 +338,15 @@ class EvaluationController extends Controller
             ],
             'porcentaje' => ['required', 'numeric', 'min:0.01', 'max:100'],
             'tipo_calculo' => ['required', Rule::in(['normal', 'laboratorio', 'proyecto'])],
+            'progreso_destino' => ['nullable', Rule::in(['progress_1', 'progress_2'])],
             'orden' => ['required', 'integer', 'min:1', 'max:999'],
         ]);
+
+        $data['progreso_destino'] = $data['tipo_calculo'] === 'proyecto'
+            ? ($data['progreso_destino'] ?? 'progress_2')
+            : null;
+
+        return $data;
     }
 
     private function guardCategoryPercentage(int $assignmentId, int $trimesterId, float $newPercentage, ?int $ignoreId = null): void

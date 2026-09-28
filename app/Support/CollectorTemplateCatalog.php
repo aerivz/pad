@@ -31,6 +31,7 @@ class CollectorTemplateCatalog
                         'porcentaje' => (float) $item->porcentaje,
                         'tipo_calculo' => $item->tipo_calculo,
                         'cantidad_notas' => $item->cantidad_notas,
+                        'progreso_destino' => $item->progreso_destino,
                         'orden' => $item->orden,
                     ])->values()->all(),
                 ];

@@ -29,8 +29,8 @@ class GradeCollectorService
             $weightedScore = $note1 !== null ? round($note1 * $percentage / 100, 2) : null;
 
             return [
-                'promedio_1' => null,
-                'promedio_2' => $weightedScore,
+                'promedio_1' => ($category->progreso_destino ?? 'progress_2') === 'progress_1' ? $weightedScore : null,
+                'promedio_2' => ($category->progreso_destino ?? 'progress_2') === 'progress_2' ? $weightedScore : null,
             ];
         }
 

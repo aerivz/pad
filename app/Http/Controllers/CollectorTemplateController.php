@@ -105,8 +105,19 @@ class CollectorTemplateController extends Controller
             'categorias.*.nombre' => ['required', 'string', 'max:120'],
             'categorias.*.porcentaje' => ['required', 'numeric', 'min:0.01', 'max:100'],
             'categorias.*.tipo_calculo' => ['required', Rule::in(['normal', 'laboratorio', 'proyecto'])],
+            'categorias.*.progreso_destino' => ['nullable', Rule::in(['progress_1', 'progress_2'])],
             'categorias.*.orden' => ['required', 'integer', 'min:1', 'max:999'],
         ]);
+
+        $data['categorias'] = collect($data['categorias'])
+            ->map(function (array $category): array {
+                $category['progreso_destino'] = $category['tipo_calculo'] === 'proyecto'
+                    ? ($category['progreso_destino'] ?? 'progress_2')
+                    : null;
+
+                return $category;
+            })
+            ->all();
 
         $data['codigo'] = $data['codigo'] ?: Str::of($data['nombre'])->lower()->ascii()->replaceMatches('/[^a-z0-9]+/', '_')->trim('_')->value();
 
@@ -136,6 +147,7 @@ class CollectorTemplateController extends Controller
                 'porcentaje' => $category['porcentaje'],
                 'tipo_calculo' => $category['tipo_calculo'],
                 'cantidad_notas' => $this->gradeCollectorService()->quantityForType($category['tipo_calculo']),
+                'progreso_destino' => $category['progreso_destino'],
                 'orden' => $category['orden'] ?? ($index + 1),
                 'activo' => true,
             ]);

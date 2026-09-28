@@ -741,7 +741,7 @@ class PanelController extends Controller
             ->where('activo', true)
             ->where('asignacion_id', $assignmentId)
             ->where('trimestre_id', $trimesterId)
-            ->select('id', 'asignacion_id', 'trimestre_id', 'nombre', 'porcentaje', 'tipo_calculo', 'cantidad_notas', 'orden')
+            ->select('id', 'asignacion_id', 'trimestre_id', 'nombre', 'porcentaje', 'tipo_calculo', 'cantidad_notas', 'progreso_destino', 'orden')
             ->orderBy('orden')
             ->orderBy('id')
             ->get();

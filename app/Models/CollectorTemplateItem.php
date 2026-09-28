@@ -16,6 +16,7 @@ class CollectorTemplateItem extends Model
         'porcentaje',
         'tipo_calculo',
         'cantidad_notas',
+        'progreso_destino',
         'orden',
         'activo',
     ];

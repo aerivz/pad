@@ -196,7 +196,7 @@
                                             @foreach ($gradeBoard['categories'] as $category)
                                                 <th colspan="{{ $category->tipo_calculo === 'proyecto' ? 2 : ($category->tipo_calculo === 'laboratorio' ? 4 : 6) }}" class="text-center">
                                                     {{ $category->nombre }}<br>
-                                                    <small>{{ rtrim(rtrim(number_format($category->porcentaje, 2), '0'), '.') }}% | {{ $category->tipo_calculo }}</small>
+                                                    <small>{{ rtrim(rtrim(number_format($category->porcentaje, 2), '0'), '.') }}% | {{ $category->tipo_calculo }}@if($category->tipo_calculo === 'proyecto') | {{ $category->progreso_destino === 'progress_1' ? 'Progress 1' : 'Progress 2' }}@endif</small>
                                                 </th>
                                             @endforeach
                                             <th rowspan="2" class="text-center">Progress 1</th>
@@ -208,7 +208,7 @@
                                             @foreach ($gradeBoard['categories'] as $category)
                                                 @if ($category->tipo_calculo === 'proyecto')
                                                     <th class="text-center">1</th>
-                                                    <th class="text-center">Ponderado</th>
+                                                    <th class="text-center">{{ $category->progreso_destino === 'progress_1' ? 'Progress 1' : 'Progress 2' }}</th>
                                                 @elseif ($category->tipo_calculo === 'laboratorio')
                                                     <th class="text-center">1</th>
                                                     <th class="text-center">PR1</th>
@@ -236,7 +236,7 @@
                                                     <input type="number" step="0.01" min="0" max="100" name="grades[{{ $row['id'] }}][{{ $category->id }}][nota_1]" class="form-control form-control-sm grade-input" value="{{ old('grades.'.$row['id'].'.'.$category->id.'.nota_1', $categoryScore['nota_1'] ?? '') }}" @disabled($readOnlyGradeBook)>
                                                 </td>
                                                 @if ($category->tipo_calculo === 'proyecto')
-                                                    <td class="final-cell">{{ $categoryScore['promedio_2'] ?? '-' }}</td>
+                                                    <td class="final-cell">{{ $categoryScore[$category->progreso_destino === 'progress_1' ? 'promedio_1' : 'promedio_2'] ?? '-' }}</td>
                                                 @elseif ($category->tipo_calculo === 'normal')
                                                     <td class="text-center">
                                                         <input type="number" step="0.01" min="0" max="100" name="grades[{{ $row['id'] }}][{{ $category->id }}][nota_2]" class="form-control form-control-sm grade-input" value="{{ old('grades.'.$row['id'].'.'.$category->id.'.nota_2', $categoryScore['nota_2'] ?? '') }}" @disabled($readOnlyGradeBook)>
@@ -452,6 +452,14 @@
                         </select>
                     </div>
                     <div class="form-group">
+                        <label>Reflejar nota unica en</label>
+                        <select name="progreso_destino" class="form-control">
+                            <option value="progress_1" @selected(old('progreso_destino', $editCategory->progreso_destino ?? '') === 'progress_1')>Progress 1</option>
+                            <option value="progress_2" @selected(old('progreso_destino', $editCategory->progreso_destino ?? 'progress_2') === 'progress_2')>Progress 2</option>
+                        </select>
+                        <small class="text-muted">Solo aplica a Proyecto (1 nota).</small>
+                    </div>
+                    <div class="form-group">
                         <label>Orden</label>
                         <input type="number" min="1" max="999" name="orden" class="form-control" value="{{ old('orden', $editCategory->orden ?? (count($categories) + 1)) }}" required>
                     </div>
@@ -517,7 +525,7 @@
                             <tr>
                                 <td>{{ $category->nombre }}</td>
                                 <td>{{ rtrim(rtrim(number_format($category->porcentaje, 2), '0'), '.') }}%</td>
-                                <td class="text-capitalize">{{ $category->tipo_calculo }}</td>
+                                <td class="text-capitalize">{{ $category->tipo_calculo }}@if($category->tipo_calculo === 'proyecto') · {{ $category->progreso_destino === 'progress_1' ? 'Progress 1' : 'Progress 2' }}@endif</td>
                                 <td>{{ $category->cantidad_notas }}</td>
                                 <td class="action-cell text-right">
                                     <a href="/pad/notas?anio_escolar={{ $selectedYear }}&seccion_id={{ $selectedSectionId }}&materia_id={{ $selectedSubjectId }}&trimestre_id={{ $selectedTrimesterId }}&edit_category={{ $category->id }}" class="btn btn-xs btn-warning">Editar</a>

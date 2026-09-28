@@ -82,6 +82,7 @@ class GradeCollectorImportService
                     'porcentaje' => $categoryData['percentage'],
                     'tipo_calculo' => $categoryData['type'],
                     'cantidad_notas' => $categoryData['quantity'],
+                    'progreso_destino' => $categoryData['type'] === 'proyecto' ? ($category?->progreso_destino ?? 'progress_2') : null,
                     'orden' => $categoryData['order'],
                     'activo' => true,
                 ];
