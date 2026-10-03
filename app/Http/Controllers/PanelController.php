@@ -20,6 +20,7 @@ use App\Models\StudentPeriodExam;
 use App\Models\SystemBackup;
 use App\Models\Teacher;
 use App\Models\User;
+use App\Services\GradeCollectorService;
 use App\Services\SystemSettingsService;
 use App\Support\CollectorTemplateCatalog;
 use App\Support\GeneratedDocumentCatalog;
@@ -794,6 +795,8 @@ class PanelController extends Controller
                 'categories' => collect(),
                 'rows' => collect(),
                 'percentage_total' => 0,
+                'progress_1_percentage' => 0,
+                'progress_2_percentage' => 0,
                 'can_calculate_report' => false,
             ];
         }
@@ -821,6 +824,8 @@ class PanelController extends Controller
                 'categories' => collect(),
                 'rows' => collect(),
                 'percentage_total' => 0,
+                'progress_1_percentage' => 0,
+                'progress_2_percentage' => 0,
                 'can_calculate_report' => false,
             ];
         }
@@ -857,8 +862,12 @@ class PanelController extends Controller
         $annualSummaries = $this->annualAssignmentSummaries($assignmentId);
 
         $percentageTotal = round((float) $categories->sum('porcentaje'), 2);
+        $progress1Weight = round((float) $categories->sum(fn ($category) => $this->categoryCountsForProgress($category, 'progress_1') ? $category->porcentaje : 0), 2);
+        $progress2Weight = round((float) $categories->sum(fn ($category) => $this->categoryCountsForProgress($category, 'progress_2') ? $category->porcentaje : 0), 2);
+        $canCalculateReport = $percentageTotal === 100.0 && $progress1Weight > 0 && $progress2Weight > 0;
+        $gradeCollectorService = app(GradeCollectorService::class);
 
-        $rows = $students->map(function ($student) use ($categories, $scores, $conducts, $periodExams, $annualSummaries, $percentageTotal) {
+        $rows = $students->map(function ($student) use ($categories, $scores, $conducts, $periodExams, $annualSummaries, $canCalculateReport, $progress1Weight, $progress2Weight, $gradeCollectorService) {
             $studentScores = $scores->get($student->id, collect());
             $progress1 = 0;
             $progress2 = 0;
@@ -884,14 +893,16 @@ class PanelController extends Controller
                 'weighted_partial' => null,
                 'captured_weight' => 0,
             ]);
+            $normalizedProgress1 = $gradeCollectorService->normalizeProgress($progress1, $progress1Weight);
+            $normalizedProgress2 = $gradeCollectorService->normalizeProgress($progress2, $progress2Weight);
 
             return [
                 'id' => $student->id,
                 'nombre' => trim($student->nombres.' '.$student->apellidos),
                 'categories' => $categoryRows,
-                'progress_1' => round($progress1, 2),
-                'progress_2' => round($progress2, 2),
-                'report_card' => $percentageTotal === 100.0 ? round(($progress1 + $progress2) / 2, 2) : null,
+                'progress_1' => $normalizedProgress1,
+                'progress_2' => $normalizedProgress2,
+                'report_card' => $canCalculateReport ? round(($normalizedProgress1 + $normalizedProgress2) / 2, 2) : null,
                 'conducta' => $conducts[$student->id] ?? null,
                 'period_exam' => $periodExams[$student->id] ?? null,
                 'annual_average' => $annualSummary['weighted_total'] ?? $annualSummary['weighted_partial'],
@@ -905,7 +916,9 @@ class PanelController extends Controller
             'categories' => $categories,
             'rows' => $rows,
             'percentage_total' => $percentageTotal,
-            'can_calculate_report' => $percentageTotal === 100.0,
+            'progress_1_percentage' => $progress1Weight,
+            'progress_2_percentage' => $progress2Weight,
+            'can_calculate_report' => $canCalculateReport,
         ];
     }
 
@@ -1294,7 +1307,7 @@ class PanelController extends Controller
             ->where('activo', true)
             ->whereNotNull('asignacion_id')
             ->whereNotNull('trimestre_id')
-            ->selectRaw('asignacion_id, trimestre_id, ROUND(SUM(porcentaje), 2) as porcentaje_total')
+            ->selectRaw("asignacion_id, trimestre_id, ROUND(SUM(porcentaje), 2) as porcentaje_total, ROUND(SUM(CASE WHEN tipo_calculo <> 'proyecto' OR COALESCE(progreso_destino, 'progress_2') = 'progress_1' THEN porcentaje ELSE 0 END), 2) as progress_1_weight, ROUND(SUM(CASE WHEN tipo_calculo <> 'proyecto' OR COALESCE(progreso_destino, 'progress_2') = 'progress_2' THEN porcentaje ELSE 0 END), 2) as progress_2_weight")
             ->groupBy('asignacion_id', 'trimestre_id');
 
         return DB::table('notas_alumnos as na')
@@ -1307,8 +1320,14 @@ class PanelController extends Controller
                 $join->on('ct.asignacion_id', '=', 'c.asignacion_id')
                     ->on('ct.trimestre_id', '=', 'c.trimestre_id');
             })
-            ->selectRaw('na.alumno_id, c.asignacion_id, c.trimestre_id, t.numero as trimestre_numero, ROUND(SUM(COALESCE(na.promedio_1, 0)), 2) as progress_1, ROUND(SUM(COALESCE(na.promedio_2, 0)), 2) as progress_2, CASE WHEN ct.porcentaje_total = 100 THEN ROUND((SUM(COALESCE(na.promedio_1, 0)) + SUM(COALESCE(na.promedio_2, 0))) / 2, 2) ELSE NULL END as nota_final')
-            ->groupBy('na.alumno_id', 'c.asignacion_id', 'c.trimestre_id', 't.numero', 'ct.porcentaje_total');
+            ->selectRaw('na.alumno_id, c.asignacion_id, c.trimestre_id, t.numero as trimestre_numero, ROUND(SUM(COALESCE(na.promedio_1, 0)) * 100 / NULLIF(ct.progress_1_weight, 0), 2) as progress_1, ROUND(SUM(COALESCE(na.promedio_2, 0)) * 100 / NULLIF(ct.progress_2_weight, 0), 2) as progress_2, CASE WHEN ct.porcentaje_total = 100 AND ct.progress_1_weight > 0 AND ct.progress_2_weight > 0 THEN ROUND(((SUM(COALESCE(na.promedio_1, 0)) * 100 / ct.progress_1_weight) + (SUM(COALESCE(na.promedio_2, 0)) * 100 / ct.progress_2_weight)) / 2, 2) ELSE NULL END as nota_final')
+            ->groupBy('na.alumno_id', 'c.asignacion_id', 'c.trimestre_id', 't.numero', 'ct.porcentaje_total', 'ct.progress_1_weight', 'ct.progress_2_weight');
+    }
+
+    private function categoryCountsForProgress(object $category, string $progress): bool
+    {
+        return $category->tipo_calculo !== 'proyecto'
+            || ($category->progreso_destino ?? 'progress_2') === $progress;
     }
 
     private function buildAnnualReportCard(array $filters = []): Collection

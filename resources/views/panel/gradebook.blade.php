@@ -121,6 +121,10 @@
             Configuracion incompleta. Categorias suman <strong>{{ rtrim(rtrim(number_format($gradeBoard['percentage_total'], 2), '0'), '.') }}%</strong>.
             No se calculara Report Card hasta llegar a 100%.
         </div>
+    @elseif ($selectedPeriodType === 'trimester' && ! $gradeBoard['can_calculate_report'])
+        <div class="alert alert-warning">
+            Cada progreso necesita al menos una categoria asignada para calcular Report Card.
+        </div>
     @endif
 
     <div class="card collector-toolbar-card">
@@ -147,7 +151,9 @@
             <h3 class="card-title">{{ $selectedPeriodType === 'exam' ? $selectedPeriodLabel : 'Colector de notas' }}</h3>
             <div class="card-tools text-muted small">
                 @if ($selectedPeriodType === 'trimester')
-                    Total configurado: {{ rtrim(rtrim(number_format($gradeBoard['percentage_total'], 2), '0'), '.') }}% | {{ $gradeBoard['can_calculate_report'] ? 'Report Card activo' : 'Falta completar 100%' }}
+                    Progress 1: escala 100% (peso base {{ rtrim(rtrim(number_format($gradeBoard['progress_1_percentage'], 2), '0'), '.') }}%) |
+                    Progress 2: escala 100% (peso base {{ rtrim(rtrim(number_format($gradeBoard['progress_2_percentage'], 2), '0'), '.') }}%) |
+                    {{ $gradeBoard['can_calculate_report'] ? 'Report Card activo' : 'Falta completar la configuracion' }}
                 @else
                     Captura separada del periodo anual.
                 @endif
@@ -539,9 +545,12 @@
                         @if ($categories->count() > 0)
                             <tfoot class="bg-light">
                                 <tr>
-                                    <th>Total</th>
-                                    <th>{{ rtrim(rtrim(number_format($gradeBoard['percentage_total'], 2), '0'), '.') }}%</th>
-                                    <th colspan="3">{{ $gradeBoard['can_calculate_report'] ? 'Listo para Report Card' : 'Falta completar 100%' }}</th>
+                                    <th>Pesos base</th>
+                                    <th>
+                                        P1: {{ rtrim(rtrim(number_format($gradeBoard['progress_1_percentage'], 2), '0'), '.') }}%<br>
+                                        P2: {{ rtrim(rtrim(number_format($gradeBoard['progress_2_percentage'], 2), '0'), '.') }}%
+                                    </th>
+                                    <th colspan="3">{{ $gradeBoard['can_calculate_report'] ? 'Cada progreso se normaliza a escala 100%' : 'Falta completar la configuracion' }}</th>
                                 </tr>
                             </tfoot>
                         @endif

@@ -6,6 +6,11 @@ use App\Models\CollectorCategory;
 
 class GradeCollectorService
 {
+    public function normalizeProgress(float $score, float $weight): float
+    {
+        return $weight > 0 ? round(($score * 100) / $weight, 2) : 0.0;
+    }
+
     public function quantityForType(string $type): int
     {
         return match ($type) {

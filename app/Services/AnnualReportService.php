@@ -207,7 +207,7 @@ class AnnualReportService
             ->where('activo', true)
             ->whereNotNull('asignacion_id')
             ->whereNotNull('trimestre_id')
-            ->selectRaw('asignacion_id, trimestre_id, ROUND(SUM(porcentaje), 2) as porcentaje_total')
+            ->selectRaw("asignacion_id, trimestre_id, ROUND(SUM(porcentaje), 2) as porcentaje_total, ROUND(SUM(CASE WHEN tipo_calculo <> 'proyecto' OR COALESCE(progreso_destino, 'progress_2') = 'progress_1' THEN porcentaje ELSE 0 END), 2) as progress_1_weight, ROUND(SUM(CASE WHEN tipo_calculo <> 'proyecto' OR COALESCE(progreso_destino, 'progress_2') = 'progress_2' THEN porcentaje ELSE 0 END), 2) as progress_2_weight")
             ->groupBy('asignacion_id', 'trimestre_id');
 
         return DB::table('notas_alumnos as na')
@@ -220,7 +220,7 @@ class AnnualReportService
                 $join->on('ct.asignacion_id', '=', 'c.asignacion_id')
                     ->on('ct.trimestre_id', '=', 'c.trimestre_id');
             })
-            ->selectRaw('na.alumno_id, c.asignacion_id, c.trimestre_id, t.numero as trimestre_numero, ROUND(SUM(COALESCE(na.promedio_1, 0)), 2) as progress_1, ROUND(SUM(COALESCE(na.promedio_2, 0)), 2) as progress_2, CASE WHEN ct.porcentaje_total = 100 THEN ROUND((SUM(COALESCE(na.promedio_1, 0)) + SUM(COALESCE(na.promedio_2, 0))) / 2, 2) ELSE NULL END as nota_final')
-            ->groupBy('na.alumno_id', 'c.asignacion_id', 'c.trimestre_id', 't.numero', 'ct.porcentaje_total');
+            ->selectRaw('na.alumno_id, c.asignacion_id, c.trimestre_id, t.numero as trimestre_numero, ROUND(SUM(COALESCE(na.promedio_1, 0)) * 100 / NULLIF(ct.progress_1_weight, 0), 2) as progress_1, ROUND(SUM(COALESCE(na.promedio_2, 0)) * 100 / NULLIF(ct.progress_2_weight, 0), 2) as progress_2, CASE WHEN ct.porcentaje_total = 100 AND ct.progress_1_weight > 0 AND ct.progress_2_weight > 0 THEN ROUND(((SUM(COALESCE(na.promedio_1, 0)) * 100 / ct.progress_1_weight) + (SUM(COALESCE(na.promedio_2, 0)) * 100 / ct.progress_2_weight)) / 2, 2) ELSE NULL END as nota_final')
+            ->groupBy('na.alumno_id', 'c.asignacion_id', 'c.trimestre_id', 't.numero', 'ct.porcentaje_total', 'ct.progress_1_weight', 'ct.progress_2_weight');
     }
 }
