@@ -15,6 +15,7 @@ return Application::configure(basePath: dirname(__DIR__))
     ->withMiddleware(function (Middleware $middleware): void {
         $middleware->alias([
             'menu.access' => \App\Http\Middleware\EnsureMenuAccess::class,
+            'password.strong' => \App\Http\Middleware\EnsureStrongPassword::class,
         ]);
     })
     ->withExceptions(function (Exceptions $exceptions): void {

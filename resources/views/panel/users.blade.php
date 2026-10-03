@@ -2,6 +2,20 @@
 
 @section('title', 'Usuarios')
 
+@push('styles')
+<style>
+    .password-strength-track { height: 6px; overflow: hidden; background: #e9ecef; border-radius: 999px; }
+    .password-strength-bar { width: 0; height: 100%; border-radius: inherit; transition: width .2s ease, background-color .2s ease; }
+    .password-requirements { display: grid; grid-template-columns: repeat(2, minmax(0, 1fr)); gap: .15rem .75rem; margin: .5rem 0 0; padding: 0; list-style: none; font-size: .78rem; }
+    .password-requirements li { color: #6c757d; }
+    .password-requirements li::before { content: '\2022'; display: inline-block; width: 1rem; font-weight: 700; }
+    .password-requirements li.is-valid { color: #198754; }
+    .password-requirements li.is-valid::before { content: '\2713'; }
+    body.dark-theme .password-strength-track { background: #334155; }
+    @media (max-width: 575.98px) { .password-requirements { grid-template-columns: 1fr; } }
+</style>
+@endpush
+
 @section('content')
 @php($formVisible = $editUser !== null || $errors->any())
 
@@ -108,12 +122,34 @@
                     <div class="row">
                         <div class="col-md-2 form-group"><label>Perfil</label><select name="rol_id" class="form-control" required>@foreach ($roles as $role)<option value="{{ $role->id }}" @selected(old('rol_id', $editUser->rol_id ?? '') == $role->id)>{{ ucfirst($role->nombre) }}</option>@endforeach</select></div>
                         <div class="col-md-2 form-group"><label>Usuario</label><input name="nombre_usuario" class="form-control" value="{{ old('nombre_usuario', $editUser->nombre_usuario ?? '') }}" required></div>
-                        <div class="col-md-2 form-group"><label>Nombres</label><input name="nombres" class="form-control" value="{{ old('nombres', $editUser->nombres ?? '') }}" required></div>
-                        <div class="col-md-2 form-group"><label>Apellidos</label><input name="apellidos" class="form-control" value="{{ old('apellidos', $editUser->apellidos ?? '') }}" required></div>
+                        <div class="col-md-3 form-group"><label>Nombres</label><input name="nombres" class="form-control" value="{{ old('nombres', $editUser->nombres ?? '') }}" required></div>
+                        <div class="col-md-3 form-group"><label>Apellidos</label><input name="apellidos" class="form-control" value="{{ old('apellidos', $editUser->apellidos ?? '') }}" required></div>
                         <div class="col-md-2 form-group"><label>Correo</label><input type="email" name="email" class="form-control" value="{{ old('email', $editUser->email ?? '') }}" required></div>
-                        <div class="col-md-2 form-group"><label>{{ $editUser ? 'Nueva contrasena' : 'Contrasena' }}</label><input type="password" name="password" class="form-control" {{ $editUser ? '' : 'required' }}></div>
                     </div>
-                    <button class="btn btn-primary btn-sm">{{ $editUser ? 'Guardar cambios' : 'Agregar usuario' }}</button>
+                    <div class="row">
+                        <div class="col-md-6 form-group mb-md-0">
+                            <label>{{ $editUser ? 'Nueva contrasena (opcional)' : 'Contrasena' }}</label>
+                            <input type="password" name="password" id="user-password" class="form-control" minlength="8" autocomplete="new-password" {{ $editUser ? '' : 'required' }} aria-describedby="password-strength-label password-requirements">
+                            <div class="d-flex justify-content-between mt-2 small">
+                                <span class="text-muted">Fortaleza</span>
+                                <strong id="password-strength-label" class="text-muted">Sin evaluar</strong>
+                            </div>
+                            <div class="password-strength-track mt-1" aria-hidden="true"><div class="password-strength-bar" id="password-strength-bar"></div></div>
+                            <ul class="password-requirements" id="password-requirements">
+                                <li data-requirement="length">8 caracteres</li>
+                                <li data-requirement="lowercase">Una minuscula</li>
+                                <li data-requirement="uppercase">Una mayuscula</li>
+                                <li data-requirement="number">Un numero</li>
+                                <li data-requirement="symbol">Un simbolo</li>
+                            </ul>
+                        </div>
+                        <div class="col-md-6 form-group mb-0">
+                            <label>Confirmar contrasena</label>
+                            <input type="password" name="password_confirmation" id="user-password-confirmation" class="form-control" minlength="8" autocomplete="new-password" {{ $editUser ? '' : 'required' }}>
+                            <small id="password-match-message" class="form-text text-muted">Repite la misma contrasena.</small>
+                        </div>
+                    </div>
+                    <button class="btn btn-primary btn-sm mt-3">{{ $editUser ? 'Guardar cambios' : 'Agregar usuario' }}</button>
                     @if ($editUser)<a href="{{ \App\Support\AppUrl::route('users.index') }}" class="btn btn-default btn-sm">Cancelar</a>@endif
                 </form>
             </div>
@@ -157,6 +193,71 @@
                 $('#userViewModal').modal('show');
             });
         });
+
+        const passwordInput = document.getElementById('user-password');
+        const confirmationInput = document.getElementById('user-password-confirmation');
+        const strengthBar = document.getElementById('password-strength-bar');
+        const strengthLabel = document.getElementById('password-strength-label');
+        const matchMessage = document.getElementById('password-match-message');
+        const requirementItems = document.querySelectorAll('#password-requirements [data-requirement]');
+        const editingUser = @json($editUser !== null);
+        const levels = [
+            { label: 'Muy debil', color: '#dc3545' },
+            { label: 'Debil', color: '#fd7e14' },
+            { label: 'Media', color: '#ffc107' },
+            { label: 'Fuerte', color: '#20c997' },
+            { label: 'Muy fuerte', color: '#198754' }
+        ];
+
+        const passwordChecks = function (value) {
+            return {
+                length: Array.from(value).length >= 8,
+                lowercase: /\p{Ll}/u.test(value),
+                uppercase: /\p{Lu}/u.test(value),
+                number: /\p{N}/u.test(value),
+                symbol: /[\p{Z}\p{S}\p{P}]/u.test(value)
+            };
+        };
+
+        const refreshPasswordStrength = function () {
+            const value = passwordInput.value;
+            const checks = passwordChecks(value);
+            const score = Object.values(checks).filter(Boolean).length;
+
+            requirementItems.forEach(function (item) {
+                item.classList.toggle('is-valid', checks[item.dataset.requirement]);
+            });
+
+            if (value === '') {
+                strengthBar.style.width = '0';
+                strengthLabel.textContent = editingUser ? 'Sin cambios' : 'Sin evaluar';
+                strengthLabel.style.color = '';
+            } else {
+                const level = levels[Math.max(0, score - 1)];
+                strengthBar.style.width = (score * 20) + '%';
+                strengthBar.style.backgroundColor = level.color;
+                strengthLabel.textContent = level.label;
+                strengthLabel.style.color = level.color;
+            }
+
+            confirmationInput.required = !editingUser || value !== '';
+            refreshPasswordMatch();
+        };
+
+        const refreshPasswordMatch = function () {
+            const hasConfirmation = confirmationInput.value !== '';
+            const matches = passwordInput.value === confirmationInput.value;
+
+            confirmationInput.setCustomValidity(hasConfirmation && !matches ? 'Las contrasenas no coinciden.' : '');
+            matchMessage.textContent = hasConfirmation ? (matches ? 'Las contrasenas coinciden.' : 'Las contrasenas no coinciden.') : 'Repite la misma contrasena.';
+            matchMessage.classList.toggle('text-success', hasConfirmation && matches);
+            matchMessage.classList.toggle('text-danger', hasConfirmation && !matches);
+            matchMessage.classList.toggle('text-muted', !hasConfirmation);
+        };
+
+        passwordInput?.addEventListener('input', refreshPasswordStrength);
+        confirmationInput?.addEventListener('input', refreshPasswordMatch);
+        refreshPasswordStrength();
     });
 </script>
 @endpush

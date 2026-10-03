@@ -3,6 +3,7 @@
 namespace App\Http\Controllers;
 
 use App\Support\AppUrl;
+use App\Support\PasswordPolicy;
 use Illuminate\Http\RedirectResponse;
 use Illuminate\Http\Request;
 use Illuminate\Support\Facades\Auth;
@@ -28,6 +29,16 @@ class AuthController extends Controller
 
         if (Auth::attempt(['nombre_usuario' => $credentials['nombre_usuario'], 'password' => $credentials['password'], 'activo' => true], $request->boolean('remember'))) {
             $request->session()->regenerate();
+
+            if (! PasswordPolicy::isStrong($credentials['password'])) {
+                $request->session()->put('password_change_required', true);
+                $request->session()->forget('url.intended');
+
+                return redirect(AppUrl::route('profile.show'))
+                    ->with('error', 'Tu contrasena actual no cumple los requisitos de seguridad. Debes cambiarla para continuar.');
+            }
+
+            $request->session()->forget('password_change_required');
 
             $intended = $request->session()->pull('url.intended');
 

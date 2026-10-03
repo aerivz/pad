@@ -3,6 +3,7 @@
 namespace App\Http\Controllers;
 
 use App\Models\User;
+use App\Support\PasswordPolicy;
 use Illuminate\Http\RedirectResponse;
 use Illuminate\Http\Request;
 use Illuminate\Support\Facades\Hash;
@@ -18,8 +19,8 @@ class UserManagementController extends Controller
             'email' => ['required', 'email', 'max:150', 'unique:usuarios,email'],
             'nombres' => ['required', 'string', 'max:100'],
             'apellidos' => ['required', 'string', 'max:100'],
-            'password' => ['required', 'string', 'min:6'],
-        ]);
+            'password' => PasswordPolicy::rules(required: true),
+        ], PasswordPolicy::messages());
 
         User::create([
             'rol_id' => $data['rol_id'],
@@ -42,8 +43,8 @@ class UserManagementController extends Controller
             'email' => ['required', 'email', 'max:150', Rule::unique('usuarios', 'email')->ignore($user->id)],
             'nombres' => ['required', 'string', 'max:100'],
             'apellidos' => ['required', 'string', 'max:100'],
-            'password' => ['nullable', 'string', 'min:6'],
-        ]);
+            'password' => PasswordPolicy::rules(required: false),
+        ], PasswordPolicy::messages());
 
         $payload = [
             'rol_id' => $data['rol_id'],

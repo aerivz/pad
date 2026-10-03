@@ -50,7 +50,7 @@ Route::get('/', function () {
     }
 
     abort(403);
-})->name('dashboard');
+})->middleware('password.strong')->name('dashboard');
 Route::redirect('/pad/pad', '/pad/');
 Route::get('/media/{path}', [MediaController::class, 'show'])
     ->where('path', '.*')
@@ -77,7 +77,7 @@ Route::prefix('pad')->middleware('guest')->group(function () {
     Route::post('/login', [AuthController::class, 'store']);
 });
 
-Route::middleware('auth')->group(function () {
+Route::middleware(['auth', 'password.strong'])->group(function () {
     Route::post('/logout', [AuthController::class, 'destroy'])->name('logout');
 
     Route::get('/perfil', [ProfileController::class, 'show'])->name('profile.show');
@@ -175,7 +175,7 @@ Route::middleware('auth')->group(function () {
     Route::post('/configuracion/correo-prueba', [SystemConfigurationController::class, 'sendTest'])->middleware('menu.access:config')->name('config.email-test');
 });
 
-Route::prefix('pad')->middleware('auth')->group(function () {
+Route::prefix('pad')->middleware(['auth', 'password.strong'])->group(function () {
     Route::post('/logout', [AuthController::class, 'destroy']);
     Route::get('/perfil', [ProfileController::class, 'show']);
     Route::put('/perfil', [ProfileController::class, 'update']);

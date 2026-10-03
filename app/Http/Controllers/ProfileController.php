@@ -2,11 +2,12 @@
 
 namespace App\Http\Controllers;
 
-use App\Models\User;
 use App\Models\Menu;
+use App\Models\User;
 use App\Support\AppUrl;
-use Illuminate\Http\RedirectResponse;
+use App\Support\PasswordPolicy;
 use Illuminate\Http\JsonResponse;
+use Illuminate\Http\RedirectResponse;
 use Illuminate\Http\Request;
 use Illuminate\Support\Facades\File;
 use Illuminate\Support\Facades\Hash;
@@ -32,6 +33,7 @@ class ProfileController extends Controller
     {
         /** @var User $user */
         $user = $request->user();
+        $passwordChangeRequired = (bool) $request->session()->get('password_change_required', false);
         $data = $request->validate([
             'nombres' => ['required', 'string', 'max:100'],
             'apellidos' => ['required', 'string', 'max:100'],
@@ -40,9 +42,9 @@ class ProfileController extends Controller
             'ubicacion' => ['nullable', 'string', 'max:150'],
             'biografia' => ['nullable', 'string', 'max:1000'],
             'avatar' => ['nullable', 'image', 'mimes:jpg,jpeg,png,webp', 'max:2048'],
-            'password_actual' => ['nullable', 'required_with:password', 'current_password'],
-            'password' => ['nullable', 'string', 'min:8', 'confirmed'],
-        ]);
+            'password_actual' => [$passwordChangeRequired ? 'required' : 'nullable', 'required_with:password', 'current_password'],
+            'password' => PasswordPolicy::rules(required: $passwordChangeRequired),
+        ], PasswordPolicy::messages());
 
         $payload = [
             'nombres' => $data['nombres'],
@@ -69,6 +71,7 @@ class ProfileController extends Controller
 
         if (filled($data['password'] ?? null)) {
             $payload['password_hash'] = Hash::make($data['password']);
+            $request->session()->forget('password_change_required');
         }
 
         $user->update($payload);

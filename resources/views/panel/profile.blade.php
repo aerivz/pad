@@ -8,6 +8,7 @@
     $roleName = ucfirst($profileUser->role?->nombre ?? 'Usuario');
     $teacher = $profileUser->teacher;
     $initials = strtoupper(substr($profileUser->nombres ?: 'U', 0, 1).substr($profileUser->apellidos ?: 'P', 0, 1));
+    $passwordChangeRequired = (bool) session('password_change_required', false);
 @endphp
 <style>
     .profile-shell { max-width: 1180px; margin: 0 auto; }
@@ -41,6 +42,12 @@
     .profile-meta { padding: .8rem; border-radius: .75rem; background: #f8fafc; border: 1px solid #e8edf3; }
     .profile-meta span { display: block; color: #7b8799; text-transform: uppercase; font-size: .66rem; letter-spacing: .05em; font-weight: 700; }
     .profile-meta strong { display: block; margin-top: .28rem; color: #26364c; font-size: .88rem; overflow-wrap: anywhere; }
+    .profile-password-track { height: 6px; overflow: hidden; background: #e9ecef; border-radius: 999px; }
+    .profile-password-bar { width: 0; height: 100%; border-radius: inherit; transition: width .2s ease, background-color .2s ease; }
+    .profile-password-requirements { display: flex; flex-wrap: wrap; gap: .25rem .8rem; margin: .45rem 0 0; padding: 0; list-style: none; font-size: .76rem; color: #6c757d; }
+    .profile-password-requirements li::before { content: '\2022'; display: inline-block; width: .85rem; font-weight: 700; }
+    .profile-password-requirements li.is-valid { color: #198754; }
+    .profile-password-requirements li.is-valid::before { content: '\2713'; }
     body.dark-theme .profile-identity { background: #182338 !important; border-color: #2f405b; box-shadow: 0 12px 28px rgba(0, 0, 0, .23); }
     body.dark-theme .profile-avatar { border-color: #182338; box-shadow: 0 8px 22px rgba(0, 0, 0, .3); }
     body.dark-theme .profile-avatar-fallback { background: #322332; color: #ffc2cb; }
@@ -53,6 +60,7 @@
     body.dark-theme .profile-empty { color: #9cacbf; }
     body.dark-theme .profile-security { background: #211f32; border-color: #513343; color: #e8edf5; }
     body.dark-theme .profile-meta { background: #1d2a40; border-color: #2f405b; }
+    body.dark-theme .profile-password-track { background: #334155; }
     @media (max-width: 767.98px) {
         .profile-hero { min-height: 165px; }
         .profile-hero-content { padding: 1.25rem; }
@@ -66,6 +74,12 @@
 </style>
 
 <div class="profile-shell">
+    @if ($passwordChangeRequired)
+        <div class="alert alert-danger shadow-sm">
+            <strong><i class="fas fa-exclamation-triangle mr-1"></i>Cambio de contrasena obligatorio.</strong>
+            Tu contrasena actual es debil. Actualizala para poder continuar usando el sistema.
+        </div>
+    @endif
     <section class="profile-hero">
         <div class="profile-hero-content">
             <h2>Espacio personal</h2>
@@ -121,7 +135,7 @@
                     </div>
                 </div>
             </div>
-            <div class="profile-security"><i class="fas fa-lock"></i><div><strong>Seguridad de cuenta</strong><div class="small text-muted">Puedes actualizar tu contraseña desde Editar perfil. Se solicitará tu contraseña actual.</div></div></div>
+            <div class="profile-security"><i class="fas fa-lock"></i><div><strong>Seguridad de cuenta</strong><div class="small text-muted">{{ $passwordChangeRequired ? 'Debes establecer una contrasena fuerte para desbloquear el resto del sistema.' : 'Puedes actualizar tu contraseña desde Editar perfil. Se solicitará tu contraseña actual.' }}</div></div></div>
         </main>
     </div>
 </div>
@@ -142,11 +156,21 @@
                     <div class="col-md-12 form-group"><label>Foto de perfil</label><input type="file" name="avatar" class="form-control-file" accept="image/png,image/jpeg,image/webp"><small class="text-muted">JPG, PNG o WebP. Máximo 2 MB.</small></div>
                 </div>
                 <hr>
-                <h6 class="font-weight-bold">Cambiar contraseña <small class="text-muted font-weight-normal">Opcional</small></h6>
+                <h6 class="font-weight-bold">Cambiar contraseña <small class="{{ $passwordChangeRequired ? 'text-danger' : 'text-muted' }} font-weight-normal">{{ $passwordChangeRequired ? 'Obligatorio' : 'Opcional' }}</small></h6>
                 <div class="row">
-                    <div class="col-md-4 form-group"><label>Contraseña actual</label><input type="password" name="password_actual" class="form-control"></div>
-                    <div class="col-md-4 form-group"><label>Nueva contraseña</label><input type="password" name="password" class="form-control" minlength="8"></div>
-                    <div class="col-md-4 form-group"><label>Confirmar contraseña</label><input type="password" name="password_confirmation" class="form-control" minlength="8"></div>
+                    <div class="col-md-4 form-group"><label>Contraseña actual</label><input type="password" name="password_actual" class="form-control" autocomplete="current-password" @required($passwordChangeRequired)></div>
+                    <div class="col-md-4 form-group">
+                        <label>Nueva contraseña</label>
+                        <input type="password" name="password" id="profile-password" class="form-control" minlength="8" autocomplete="new-password" @required($passwordChangeRequired)>
+                        <div class="d-flex justify-content-between mt-2 small"><span class="text-muted">Fortaleza</span><strong id="profile-password-strength" class="text-muted">Sin evaluar</strong></div>
+                        <div class="profile-password-track mt-1" aria-hidden="true"><div class="profile-password-bar" id="profile-password-bar"></div></div>
+                    </div>
+                    <div class="col-md-4 form-group"><label>Confirmar contraseña</label><input type="password" name="password_confirmation" id="profile-password-confirmation" class="form-control" minlength="8" autocomplete="new-password" @required($passwordChangeRequired)><small id="profile-password-match" class="form-text text-muted">Repite la misma contrasena.</small></div>
+                    <div class="col-md-12">
+                        <ul class="profile-password-requirements" id="profile-password-requirements">
+                            <li data-requirement="length">8 caracteres</li><li data-requirement="lowercase">Minuscula</li><li data-requirement="uppercase">Mayuscula</li><li data-requirement="number">Numero</li><li data-requirement="symbol">Simbolo</li>
+                        </ul>
+                    </div>
                 </div>
             </div>
             <div class="modal-footer"><button type="button" class="btn btn-default" data-dismiss="modal">Cancelar</button><button class="btn btn-danger"><i class="fas fa-save mr-1"></i>Guardar perfil</button></div>
@@ -158,9 +182,58 @@
 @push('scripts')
 <script>
 document.addEventListener('DOMContentLoaded', function () {
-    @if ($errors->any())
+    @if ($errors->any() || $passwordChangeRequired)
     $('#profileEditModal').modal('show');
     @endif
+
+    const passwordInput = document.getElementById('profile-password');
+    const confirmationInput = document.getElementById('profile-password-confirmation');
+    const strengthBar = document.getElementById('profile-password-bar');
+    const strengthLabel = document.getElementById('profile-password-strength');
+    const matchMessage = document.getElementById('profile-password-match');
+    const requirementItems = document.querySelectorAll('#profile-password-requirements [data-requirement]');
+    const passwordChangeRequired = @json($passwordChangeRequired);
+    const levels = [
+        { label: 'Muy debil', color: '#dc3545' }, { label: 'Debil', color: '#fd7e14' },
+        { label: 'Media', color: '#ffc107' }, { label: 'Fuerte', color: '#20c997' },
+        { label: 'Muy fuerte', color: '#198754' }
+    ];
+
+    const refreshMatch = function () {
+        const hasConfirmation = confirmationInput.value !== '';
+        const matches = passwordInput.value === confirmationInput.value;
+        confirmationInput.setCustomValidity(hasConfirmation && !matches ? 'Las contrasenas no coinciden.' : '');
+        matchMessage.textContent = hasConfirmation ? (matches ? 'Las contrasenas coinciden.' : 'Las contrasenas no coinciden.') : 'Repite la misma contrasena.';
+        matchMessage.classList.toggle('text-success', hasConfirmation && matches);
+        matchMessage.classList.toggle('text-danger', hasConfirmation && !matches);
+        matchMessage.classList.toggle('text-muted', !hasConfirmation);
+    };
+
+    const refreshStrength = function () {
+        const value = passwordInput.value;
+        const checks = { length: Array.from(value).length >= 8, lowercase: /\p{Ll}/u.test(value), uppercase: /\p{Lu}/u.test(value), number: /\p{N}/u.test(value), symbol: /[\p{Z}\p{S}\p{P}]/u.test(value) };
+        const score = Object.values(checks).filter(Boolean).length;
+        requirementItems.forEach(function (item) { item.classList.toggle('is-valid', checks[item.dataset.requirement]); });
+
+        if (value === '') {
+            strengthBar.style.width = '0';
+            strengthLabel.textContent = 'Sin evaluar';
+            strengthLabel.style.color = '';
+        } else {
+            const level = levels[Math.max(0, score - 1)];
+            strengthBar.style.width = (score * 20) + '%';
+            strengthBar.style.backgroundColor = level.color;
+            strengthLabel.textContent = level.label;
+            strengthLabel.style.color = level.color;
+        }
+
+        confirmationInput.required = passwordChangeRequired || value !== '';
+        refreshMatch();
+    };
+
+    passwordInput.addEventListener('input', refreshStrength);
+    confirmationInput.addEventListener('input', refreshMatch);
+    refreshStrength();
 });
 </script>
 @endpush
