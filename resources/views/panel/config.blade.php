@@ -48,7 +48,7 @@
                 <form method="POST" action="{{ \App\Support\AppUrl::route('config.email-test') }}" class="card-body">
                     @csrf
                     <p class="text-muted small">Guarda primero la configuracion. El mensaje se enviara con el servidor SMTP activo.</p>
-                    <div class="form-group"><label>Destinatario</label><input type="email" name="destinatario" required class="form-control" placeholder="correo@ejemplo.com"></div>
+                    <div class="form-group"><label>Destinatario</label><input type="email" name="destinatario" required class="form-control" value="{{ old('destinatario') }}" placeholder="correo@ejemplo.com"></div>
                     <button class="btn btn-outline-primary btn-block"><i class="fas fa-paper-plane mr-1"></i>Enviar prueba</button>
                 </form>
             </div>

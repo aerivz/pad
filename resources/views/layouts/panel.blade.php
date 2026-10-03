@@ -616,6 +616,7 @@
         });
 
         const successMessage = @json(session('status'));
+        const errorMessage = @json(session('error'));
         const validationErrors = @json($errors->all());
 
         if (successMessage) {
@@ -625,6 +626,17 @@
                 text: successMessage,
                 confirmButtonText: 'Aceptar',
                 confirmButtonColor: '#1f6feb'
+            });
+        }
+
+        if (errorMessage) {
+            Swal.fire({
+                icon: 'error',
+                title: 'No se pudo completar la operacion',
+                text: errorMessage,
+                confirmButtonText: 'Entendido',
+                confirmButtonColor: '#d33',
+                width: '48rem'
             });
         }
 
