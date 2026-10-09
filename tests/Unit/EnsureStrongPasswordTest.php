@@ -37,9 +37,8 @@ class EnsureStrongPasswordTest extends TestCase
         $request = Request::create('/prueba', 'GET');
         $session = new Store('test', new ArraySessionHandler(120));
         $session->start();
-        $session->put('password_change_required', true);
         $request->setLaravelSession($session);
-        $request->setUserResolver(fn () => new User);
+        $request->setUserResolver(fn () => new User(['must_change_password' => true]));
 
         $request->setRouteResolver(fn () => new class($action)
         {

@@ -153,10 +153,10 @@ class SchoolSeeder extends Seeder
 
             $assignments = [
                 'admin' => ['dashboard', 'sections', 'students', 'teachers', 'subjects', 'guardians', 'gradebook', 'reportcard', 'emails', 'users', 'profiles', 'config'],
-                'director' => ['dashboard', 'sections', 'students', 'teachers', 'subjects', 'guardians', 'reportcard', 'emails'],
+                'director' => ['dashboard', 'sections', 'students', 'teachers', 'subjects', 'guardians', 'reportcard'],
                 'secretaria' => ['dashboard', 'sections', 'students', 'teachers', 'subjects', 'guardians', 'gradebook', 'reportcard', 'emails'],
                 'profesor' => ['dashboard', 'students', 'subjects', 'gradebook', 'reportcard'],
-                'padre' => ['dashboard', 'reportcard', 'emails'],
+                'padre' => ['dashboard', 'reportcard'],
             ];
 
             $rows = [];

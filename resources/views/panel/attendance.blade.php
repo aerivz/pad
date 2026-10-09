@@ -90,6 +90,7 @@
         <div class="attendance-stat"><strong data-summary="pendiente">{{ $attendanceSummary['pendientes'] }}</strong><span>Pendientes</span></div>
     </div>
 
+    @if ($canManageAttendance)
     <div class="attendance-mobile">
         <div class="card maint-card">
             <div class="card-header border-0 d-flex justify-content-between align-items-center">
@@ -124,6 +125,7 @@
             </div>
         </div>
     </div>
+    @endif
 
     <div class="attendance-desktop card maint-card">
         <div class="card-header border-0">
@@ -146,8 +148,8 @@
                                 <td><strong>{{ $student['name'] }}</strong></td>
                                 <td><div class="custom-control custom-radio"><input class="custom-control-input" type="radio" id="present-{{ $student['id'] }}" name="estado[{{ $student['id'] }}]" value="presente" @checked($student['estado'] === 'presente')><label class="custom-control-label text-success" for="present-{{ $student['id'] }}">Sí</label></div></td>
                                 <td><div class="custom-control custom-radio"><input class="custom-control-input" type="radio" id="absent-{{ $student['id'] }}" name="estado[{{ $student['id'] }}]" value="ausente" @checked(in_array($student['estado'], ['ausente', 'justificado'], true))><label class="custom-control-label text-danger" for="absent-{{ $student['id'] }}">No</label></div></td>
-                                <td><select class="form-control form-control-sm attendance-justification" name="tipo_justificante[{{ $student['id'] }}]" data-student="{{ $student['id'] }}"><option value="sin_justificante" @selected(! $isJustified)>Sin justificante</option><option value="justificante" @selected($isJustified)>Justificante</option></select></td>
-                                <td><input type="text" class="form-control form-control-sm attendance-reason" name="motivo[{{ $student['id'] }}]" data-student="{{ $student['id'] }}" value="{{ $student['justificante'] }}" placeholder="Motivo de ausencia" @disabled(! $isJustified)></td>
+                                <td><select class="form-control form-control-sm attendance-justification" name="tipo_justificante[{{ $student['id'] }}]" data-student="{{ $student['id'] }}" @disabled(! $canManageAttendance)><option value="sin_justificante" @selected(! $isJustified)>Sin justificante</option><option value="justificante" @selected($isJustified)>Justificante</option></select></td>
+                                <td><input type="text" class="form-control form-control-sm attendance-reason" name="motivo[{{ $student['id'] }}]" data-student="{{ $student['id'] }}" value="{{ $student['justificante'] }}" placeholder="Motivo de ausencia" @disabled(! $canManageAttendance || ! $isJustified)></td>
                             </tr>
                         @empty
                             <tr><td colspan="6" class="text-center text-muted py-4">No hay alumnos activos en esta sección.</td></tr>
@@ -156,7 +158,7 @@
                     </table>
                 </div>
             </div>
-            @if ($attendanceStudents->isNotEmpty())
+            @if ($canManageAttendance && $attendanceStudents->isNotEmpty())
                 <div class="card-footer bg-white border-0 text-right"><button class="btn btn-success"><i class="fas fa-save mr-1"></i>Guardar asistencia</button></div>
             @endif
         </form>

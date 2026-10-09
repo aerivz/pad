@@ -3,7 +3,7 @@
 @section('title', 'Asignaciones')
 
 @section('content')
-@php($formVisible = $editAssignment !== null || $errors->any())
+@php($formVisible = $canManageAcademicData && ($editAssignment !== null || $errors->any()))
 
 <div class="card maint-card">
     <div class="card-header border-0">
@@ -13,9 +13,9 @@
                 <span>Asignacion de materias por seccion</span>
             </div>
             <div class="maint-actions">
-                <button class="btn btn-success btn-sm" type="button" data-toggle="modal" data-target="#assignmentFormModal">
+                @if ($canManageAcademicData)<button class="btn btn-success btn-sm" type="button" data-toggle="modal" data-target="#assignmentFormModal">
                     <i class="fas fa-plus mr-1"></i>{{ $editAssignment ? 'Editar asignacion' : 'Nueva asignacion' }}
-                </button>
+                </button>@endif
             </div>
         </div>
     </div>
@@ -70,8 +70,9 @@
                                 data-teacher="{{ $assignment->profesor }}">
                                 <i class="fas fa-eye"></i>
                             </button>
-                            <a href="{{ \App\Support\AppUrl::route('assignments.index') }}?edit_assignment={{ $assignment->id }}" class="btn btn-xs btn-warning"><i class="fas fa-pen"></i></a>
+                            @if ($canManageAcademicData)<a href="{{ \App\Support\AppUrl::route('assignments.index') }}?edit_assignment={{ $assignment->id }}" class="btn btn-xs btn-warning"><i class="fas fa-pen"></i></a>
                             <form method="POST" action="{{ \App\Support\AppUrl::route('assignments.destroy', ['assignment' => $assignment->id]) }}" data-swal-confirm="true" data-swal-title="Desactivar asignacion" data-swal-text="La asignacion dejara de usarse en procesos nuevos, pero el historial seguira disponible." data-swal-confirm-label="Si, desactivar">@csrf @method('DELETE')<button class="btn btn-xs btn-danger"><i class="fas fa-user-slash"></i></button></form>
+                            @endif
                         </td>
                     </tr>
                 @empty

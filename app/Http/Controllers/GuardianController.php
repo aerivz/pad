@@ -3,10 +3,10 @@
 namespace App\Http\Controllers;
 
 use App\Models\Guardian;
-use Illuminate\Support\Facades\DB;
-use Illuminate\Support\Arr;
 use Illuminate\Http\RedirectResponse;
 use Illuminate\Http\Request;
+use Illuminate\Support\Arr;
+use Illuminate\Support\Facades\DB;
 use Illuminate\Validation\Rule;
 
 class GuardianController extends Controller
@@ -29,7 +29,7 @@ class GuardianController extends Controller
         $data = $this->validateGuardian($request);
 
         DB::transaction(function () use ($data): void {
-            $guardian = Guardian::create(Arr::only($data, ['nombres', 'apellidos', 'email_principal']));
+            $guardian = Guardian::create(Arr::only($data, ['usuario_id', 'nombres', 'apellidos', 'email_principal']));
             $this->syncMembers($guardian->id, $data['members']);
         });
 
@@ -41,7 +41,7 @@ class GuardianController extends Controller
         $data = $this->validateGuardian($request, $guardian);
 
         DB::transaction(function () use ($guardian, $data): void {
-            $guardian->update(Arr::only($data, ['nombres', 'apellidos', 'email_principal']));
+            $guardian->update(Arr::only($data, ['usuario_id', 'nombres', 'apellidos', 'email_principal']));
             $this->syncMembers($guardian->id, $data['members']);
         });
 
@@ -58,6 +58,29 @@ class GuardianController extends Controller
     private function validateGuardian(Request $request, ?Guardian $guardian = null): array
     {
         $data = $request->validate([
+            'usuario_id' => [
+                'nullable',
+                'integer',
+                'exists:usuarios,id',
+                Rule::unique('padres', 'usuario_id')->ignore($guardian?->id),
+                function (string $attribute, mixed $value, \Closure $fail): void {
+                    if (! $value) {
+                        return;
+                    }
+
+                    $isParent = DB::table('usuarios as u')
+                        ->join('roles as r', 'r.id', '=', 'u.rol_id')
+                        ->where('u.id', $value)
+                        ->where('u.activo', true)
+                        ->where('r.activo', true)
+                        ->where('r.nombre', 'padre')
+                        ->exists();
+
+                    if (! $isParent) {
+                        $fail('El usuario seleccionado debe estar activo y tener perfil de padre.');
+                    }
+                },
+            ],
             'nombres' => ['required', 'string', 'max:100'],
             'apellidos' => ['required', 'string', 'max:100'],
             'email_principal' => [

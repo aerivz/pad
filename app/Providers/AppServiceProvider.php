@@ -4,9 +4,13 @@ namespace App\Providers;
 
 use App\Models\UserNotification;
 use App\Services\SystemSettingsService;
+use Illuminate\Cache\RateLimiting\Limit;
+use Illuminate\Http\Request;
+use Illuminate\Support\Facades\RateLimiter;
 use Illuminate\Support\Facades\Schema;
 use Illuminate\Support\Facades\View;
 use Illuminate\Support\ServiceProvider;
+use Illuminate\Support\Str;
 
 class AppServiceProvider extends ServiceProvider
 {
@@ -27,6 +31,12 @@ class AppServiceProvider extends ServiceProvider
      */
     public function boot(): void
     {
+        RateLimiter::for('login', function (Request $request): Limit {
+            $username = Str::lower((string) $request->input('nombre_usuario'));
+
+            return Limit::perMinute(5)->by($username.'|'.$request->ip());
+        });
+
         app(SystemSettingsService::class)->apply();
 
         View::composer('layouts.panel', function ($view): void {
@@ -34,6 +44,7 @@ class AppServiceProvider extends ServiceProvider
 
             if (! $user || ! Schema::hasTable('notificaciones_usuarios')) {
                 $view->with(['headerNotifications' => collect(), 'unreadNotificationCount' => 0]);
+
                 return;
             }
 

@@ -3,7 +3,7 @@
 @section('title', 'Alumnos')
 
 @section('content')
-@php($formVisible = $editStudent !== null || $errors->any())
+@php($formVisible = $canManageAcademicData && ($editStudent !== null || $errors->any()))
 
 <div class="card maint-card">
     <div class="card-header border-0">
@@ -13,9 +13,9 @@
                 <span>Lista de alumnos</span>
             </div>
             <div class="maint-actions">
-                <button class="btn btn-success btn-sm" type="button" data-toggle="modal" data-target="#studentFormModal">
+                @if ($canManageAcademicData)<button class="btn btn-success btn-sm" type="button" data-toggle="modal" data-target="#studentFormModal">
                     <i class="fas fa-plus mr-1"></i>{{ $editStudent ? 'Editar alumno' : 'Nuevo alumno' }}
-                </button>
+                </button>@endif
             </div>
         </div>
     </div>
@@ -62,8 +62,9 @@
                         <td><span class="maint-status maint-status-active">Activo</span></td>
                         <td class="maint-actions-cell">
                             <button type="button" class="btn btn-xs btn-info student-view-button" data-name="{{ $student->nombres }} {{ $student->apellidos }}" data-section="{{ $student->grado }} {{ $student->seccion_nombre }}" data-family="{{ $student->total_padres }}" data-average="{{ $student->promedio ?? '-' }}"><i class="fas fa-eye"></i></button>
-                            <a href="{{ \App\Support\AppUrl::route('students.index') }}?edit_student={{ $student->id }}" class="btn btn-xs btn-warning"><i class="fas fa-pen"></i></a>
+                            @if ($canManageAcademicData)<a href="{{ \App\Support\AppUrl::route('students.index') }}?edit_student={{ $student->id }}" class="btn btn-xs btn-warning"><i class="fas fa-pen"></i></a>
                             <form method="POST" action="{{ \App\Support\AppUrl::route('students.destroy', ['student' => $student->id]) }}" data-swal-confirm="true" data-swal-title="Desactivar alumno" data-swal-text="El alumno quedara inactivo y no se eliminara fisicamente de la base de datos." data-swal-confirm-label="Si, desactivar">@csrf @method('DELETE')<button class="btn btn-xs btn-danger"><i class="fas fa-user-slash"></i></button></form>
+                            @endif
                         </td>
                     </tr>
                 @empty

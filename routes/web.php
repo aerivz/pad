@@ -1,13 +1,13 @@
 <?php
 
-use App\Http\Controllers\AuthController;
 use App\Http\Controllers\AssignmentController;
 use App\Http\Controllers\AttendanceController;
+use App\Http\Controllers\AuthController;
 use App\Http\Controllers\CollectorTemplateController;
-use App\Http\Controllers\EmailDispatchController;
 use App\Http\Controllers\EmailBatchController;
-use App\Http\Controllers\EmailTemplateController;
+use App\Http\Controllers\EmailDispatchController;
 use App\Http\Controllers\EmailPreviewController;
+use App\Http\Controllers\EmailTemplateController;
 use App\Http\Controllers\EvaluationController;
 use App\Http\Controllers\GuardianController;
 use App\Http\Controllers\MediaController;
@@ -50,7 +50,7 @@ Route::get('/', function () {
     }
 
     abort(403);
-})->middleware('password.strong')->name('dashboard');
+})->middleware(['user.active', 'password.strong'])->name('dashboard');
 Route::redirect('/pad/pad', '/pad/');
 Route::get('/media/{path}', [MediaController::class, 'show'])
     ->where('path', '.*')
@@ -69,15 +69,15 @@ Route::get('/pad/images/pwa/{name}', [PwaAssetController::class, 'icon'])->where
 
 Route::middleware('guest')->group(function () {
     Route::get('/login', [AuthController::class, 'create'])->name('login');
-    Route::post('/login', [AuthController::class, 'store'])->name('login.store');
+    Route::post('/login', [AuthController::class, 'store'])->middleware('throttle:login')->name('login.store');
 });
 
 Route::prefix('pad')->middleware('guest')->group(function () {
     Route::get('/login', [AuthController::class, 'create']);
-    Route::post('/login', [AuthController::class, 'store']);
+    Route::post('/login', [AuthController::class, 'store'])->middleware('throttle:login');
 });
 
-Route::middleware(['auth', 'password.strong'])->group(function () {
+Route::middleware(['auth', 'user.active', 'password.strong'])->group(function () {
     Route::post('/logout', [AuthController::class, 'destroy'])->name('logout');
 
     Route::get('/perfil', [ProfileController::class, 'show'])->name('profile.show');
@@ -86,43 +86,43 @@ Route::middleware(['auth', 'password.strong'])->group(function () {
     Route::post('/notificaciones/{notification}/leer', [NotificationController::class, 'read'])->name('notifications.read');
 
     Route::get('/secciones', [PanelController::class, 'sections'])->middleware('menu.access:sections')->name('sections.index');
-    Route::post('/secciones', [SectionController::class, 'store'])->middleware('menu.access:sections')->name('sections.store');
-    Route::patch('/secciones/{section}', [SectionController::class, 'update'])->middleware('menu.access:sections')->name('sections.update');
-    Route::delete('/secciones/{section}', [SectionController::class, 'destroy'])->middleware('menu.access:sections')->name('sections.destroy');
+    Route::post('/secciones', [SectionController::class, 'store'])->middleware(['menu.access:sections', 'role.access:admin,secretaria'])->name('sections.store');
+    Route::patch('/secciones/{section}', [SectionController::class, 'update'])->middleware(['menu.access:sections', 'role.access:admin,secretaria'])->name('sections.update');
+    Route::delete('/secciones/{section}', [SectionController::class, 'destroy'])->middleware(['menu.access:sections', 'role.access:admin,secretaria'])->name('sections.destroy');
 
     Route::get('/alumnos', [PanelController::class, 'students'])->middleware('menu.access:students')->name('students.index');
-    Route::post('/alumnos', [StudentController::class, 'store'])->middleware('menu.access:students')->name('students.store');
-    Route::patch('/alumnos/{student}', [StudentController::class, 'update'])->middleware('menu.access:students')->name('students.update');
-    Route::delete('/alumnos/{student}', [StudentController::class, 'destroy'])->middleware('menu.access:students')->name('students.destroy');
+    Route::post('/alumnos', [StudentController::class, 'store'])->middleware(['menu.access:students', 'role.access:admin,secretaria'])->name('students.store');
+    Route::patch('/alumnos/{student}', [StudentController::class, 'update'])->middleware(['menu.access:students', 'role.access:admin,secretaria'])->name('students.update');
+    Route::delete('/alumnos/{student}', [StudentController::class, 'destroy'])->middleware(['menu.access:students', 'role.access:admin,secretaria'])->name('students.destroy');
 
     Route::get('/asistencia', [PanelController::class, 'attendance'])->middleware('menu.access:attendance')->name('attendance.index');
-    Route::post('/asistencia', [AttendanceController::class, 'sync'])->middleware('menu.access:attendance')->name('attendance.sync');
-    Route::post('/asistencia/{student}', [AttendanceController::class, 'mark'])->middleware('menu.access:attendance')->name('attendance.mark');
-    Route::post('/asistencia/{student}/restaurar', [AttendanceController::class, 'restore'])->middleware('menu.access:attendance')->name('attendance.restore');
+    Route::post('/asistencia', [AttendanceController::class, 'sync'])->middleware(['menu.access:attendance', 'role.access:admin,secretaria,profesor'])->name('attendance.sync');
+    Route::post('/asistencia/{student}', [AttendanceController::class, 'mark'])->middleware(['menu.access:attendance', 'role.access:admin,secretaria,profesor'])->name('attendance.mark');
+    Route::post('/asistencia/{student}/restaurar', [AttendanceController::class, 'restore'])->middleware(['menu.access:attendance', 'role.access:admin,secretaria,profesor'])->name('attendance.restore');
 
     Route::get('/profesores', [PanelController::class, 'teachers'])->middleware('menu.access:teachers')->name('teachers.index');
-    Route::post('/profesores', [TeacherController::class, 'store'])->middleware('menu.access:teachers')->name('teachers.store');
-    Route::patch('/profesores/{teacher}', [TeacherController::class, 'update'])->middleware('menu.access:teachers')->name('teachers.update');
-    Route::delete('/profesores/{teacher}', [TeacherController::class, 'destroy'])->middleware('menu.access:teachers')->name('teachers.destroy');
+    Route::post('/profesores', [TeacherController::class, 'store'])->middleware(['menu.access:teachers', 'role.access:admin,secretaria'])->name('teachers.store');
+    Route::patch('/profesores/{teacher}', [TeacherController::class, 'update'])->middleware(['menu.access:teachers', 'role.access:admin,secretaria'])->name('teachers.update');
+    Route::delete('/profesores/{teacher}', [TeacherController::class, 'destroy'])->middleware(['menu.access:teachers', 'role.access:admin,secretaria'])->name('teachers.destroy');
 
     Route::get('/materias', [PanelController::class, 'subjects'])->middleware('menu.access:subjects')->name('subjects.index');
-    Route::post('/materias', [SubjectController::class, 'store'])->middleware('menu.access:subjects')->name('subjects.store');
-    Route::patch('/materias/{subject}', [SubjectController::class, 'update'])->middleware('menu.access:subjects')->name('subjects.update');
-    Route::delete('/materias/{subject}', [SubjectController::class, 'destroy'])->middleware('menu.access:subjects')->name('subjects.destroy');
+    Route::post('/materias', [SubjectController::class, 'store'])->middleware(['menu.access:subjects', 'role.access:admin,secretaria'])->name('subjects.store');
+    Route::patch('/materias/{subject}', [SubjectController::class, 'update'])->middleware(['menu.access:subjects', 'role.access:admin,secretaria'])->name('subjects.update');
+    Route::delete('/materias/{subject}', [SubjectController::class, 'destroy'])->middleware(['menu.access:subjects', 'role.access:admin,secretaria'])->name('subjects.destroy');
     Route::get('/plantillas-colector', [PanelController::class, 'collectorTemplates'])->middleware('menu.access:collector_templates')->name('collector-templates.index');
-    Route::post('/plantillas-colector', [CollectorTemplateController::class, 'store'])->middleware('menu.access:collector_templates')->name('collector-templates.store');
-    Route::patch('/plantillas-colector/{template}', [CollectorTemplateController::class, 'update'])->middleware('menu.access:collector_templates')->name('collector-templates.update');
-    Route::delete('/plantillas-colector/{template}', [CollectorTemplateController::class, 'destroy'])->middleware('menu.access:collector_templates')->name('collector-templates.destroy');
+    Route::post('/plantillas-colector', [CollectorTemplateController::class, 'store'])->middleware(['menu.access:collector_templates', 'role.access:admin,secretaria'])->name('collector-templates.store');
+    Route::patch('/plantillas-colector/{template}', [CollectorTemplateController::class, 'update'])->middleware(['menu.access:collector_templates', 'role.access:admin,secretaria'])->name('collector-templates.update');
+    Route::delete('/plantillas-colector/{template}', [CollectorTemplateController::class, 'destroy'])->middleware(['menu.access:collector_templates', 'role.access:admin,secretaria'])->name('collector-templates.destroy');
 
     Route::get('/asignaciones', [PanelController::class, 'assignments'])->middleware('menu.access:assignments')->name('assignments.index');
-    Route::post('/asignaciones', [AssignmentController::class, 'store'])->middleware('menu.access:assignments')->name('assignments.store');
-    Route::patch('/asignaciones/{assignment}', [AssignmentController::class, 'update'])->middleware('menu.access:assignments')->name('assignments.update');
-    Route::delete('/asignaciones/{assignment}', [AssignmentController::class, 'destroy'])->middleware('menu.access:assignments')->name('assignments.destroy');
+    Route::post('/asignaciones', [AssignmentController::class, 'store'])->middleware(['menu.access:assignments', 'role.access:admin,secretaria'])->name('assignments.store');
+    Route::patch('/asignaciones/{assignment}', [AssignmentController::class, 'update'])->middleware(['menu.access:assignments', 'role.access:admin,secretaria'])->name('assignments.update');
+    Route::delete('/asignaciones/{assignment}', [AssignmentController::class, 'destroy'])->middleware(['menu.access:assignments', 'role.access:admin,secretaria'])->name('assignments.destroy');
 
     Route::get('/familias', [PanelController::class, 'guardians'])->middleware('menu.access:guardians')->name('guardians.index');
-    Route::post('/familias', [GuardianController::class, 'store'])->middleware('menu.access:guardians')->name('guardians.store');
-    Route::patch('/familias/{guardian}', [GuardianController::class, 'update'])->middleware('menu.access:guardians')->name('guardians.update');
-    Route::delete('/familias/{guardian}', [GuardianController::class, 'destroy'])->middleware('menu.access:guardians')->name('guardians.destroy');
+    Route::post('/familias', [GuardianController::class, 'store'])->middleware(['menu.access:guardians', 'role.access:admin,secretaria'])->name('guardians.store');
+    Route::patch('/familias/{guardian}', [GuardianController::class, 'update'])->middleware(['menu.access:guardians', 'role.access:admin,secretaria'])->name('guardians.update');
+    Route::delete('/familias/{guardian}', [GuardianController::class, 'destroy'])->middleware(['menu.access:guardians', 'role.access:admin,secretaria'])->name('guardians.destroy');
     Route::redirect('/padres', '/familias');
 
     Route::get('/notas', [PanelController::class, 'gradeBook'])->middleware('menu.access:gradebook')->name('gradebook.index');
@@ -137,45 +137,45 @@ Route::middleware(['auth', 'password.strong'])->group(function () {
     Route::get('/report-card', [PanelController::class, 'reportCard'])->middleware('menu.access:reportcard')->name('reportcard.index');
     Route::get('/report-card/pdf', [PanelController::class, 'reportCardPdf'])->middleware('menu.access:reportcard')->name('reportcard.pdf');
 
-    Route::get('/correos', [PanelController::class, 'emails'])->middleware('menu.access:emails')->name('emails.index');
-    Route::post('/correos', [EmailDispatchController::class, 'store'])->middleware('menu.access:emails')->name('emails.store');
-    Route::post('/correos/lotes', [EmailBatchController::class, 'store'])->middleware('menu.access:emails')->name('emails.batches.store');
-    Route::post('/correos/lotes/{batch}/reintentar-fallidos', [EmailBatchController::class, 'retryFailed'])->middleware('menu.access:emails')->name('emails.batches.retry');
-    Route::get('/correos/lotes/{batch}/exportar', [EmailBatchController::class, 'export'])->middleware('menu.access:emails')->name('emails.batches.export');
-    Route::get('/correos/vista-previa', [EmailPreviewController::class, 'show'])->middleware('menu.access:emails')->name('emails.preview');
-    Route::get('/correos/vista-previa/documento', [EmailPreviewController::class, 'document'])->middleware('menu.access:emails')->name('emails.preview.document');
-    Route::post('/correos/{dispatch}/enviar', [EmailDispatchController::class, 'send'])->middleware('menu.access:emails')->name('emails.send');
-    Route::patch('/correos/{dispatch}', [EmailDispatchController::class, 'update'])->middleware('menu.access:emails')->name('emails.update');
-    Route::delete('/correos/{dispatch}', [EmailDispatchController::class, 'destroy'])->middleware('menu.access:emails')->name('emails.destroy');
-    Route::post('/correos/plantillas', [EmailTemplateController::class, 'store'])->middleware('menu.access:emails')->name('emails.templates.store');
-    Route::patch('/correos/plantillas/{template}', [EmailTemplateController::class, 'update'])->middleware('menu.access:emails')->name('emails.templates.update');
-    Route::delete('/correos/plantillas/{template}', [EmailTemplateController::class, 'destroy'])->middleware('menu.access:emails')->name('emails.templates.destroy');
+    Route::get('/correos', [PanelController::class, 'emails'])->middleware(['menu.access:emails', 'role.access:admin,secretaria'])->name('emails.index');
+    Route::post('/correos', [EmailDispatchController::class, 'store'])->middleware(['menu.access:emails', 'role.access:admin,secretaria'])->name('emails.store');
+    Route::post('/correos/lotes', [EmailBatchController::class, 'store'])->middleware(['menu.access:emails', 'role.access:admin,secretaria'])->name('emails.batches.store');
+    Route::post('/correos/lotes/{batch}/reintentar-fallidos', [EmailBatchController::class, 'retryFailed'])->middleware(['menu.access:emails', 'role.access:admin,secretaria'])->name('emails.batches.retry');
+    Route::get('/correos/lotes/{batch}/exportar', [EmailBatchController::class, 'export'])->middleware(['menu.access:emails', 'role.access:admin,secretaria'])->name('emails.batches.export');
+    Route::get('/correos/vista-previa', [EmailPreviewController::class, 'show'])->middleware(['menu.access:emails', 'role.access:admin,secretaria'])->name('emails.preview');
+    Route::get('/correos/vista-previa/documento', [EmailPreviewController::class, 'document'])->middleware(['menu.access:emails', 'role.access:admin,secretaria'])->name('emails.preview.document');
+    Route::post('/correos/{dispatch}/enviar', [EmailDispatchController::class, 'send'])->middleware(['menu.access:emails', 'role.access:admin,secretaria'])->name('emails.send');
+    Route::patch('/correos/{dispatch}', [EmailDispatchController::class, 'update'])->middleware(['menu.access:emails', 'role.access:admin,secretaria'])->name('emails.update');
+    Route::delete('/correos/{dispatch}', [EmailDispatchController::class, 'destroy'])->middleware(['menu.access:emails', 'role.access:admin,secretaria'])->name('emails.destroy');
+    Route::post('/correos/plantillas', [EmailTemplateController::class, 'store'])->middleware(['menu.access:emails', 'role.access:admin,secretaria'])->name('emails.templates.store');
+    Route::patch('/correos/plantillas/{template}', [EmailTemplateController::class, 'update'])->middleware(['menu.access:emails', 'role.access:admin,secretaria'])->name('emails.templates.update');
+    Route::delete('/correos/plantillas/{template}', [EmailTemplateController::class, 'destroy'])->middleware(['menu.access:emails', 'role.access:admin,secretaria'])->name('emails.templates.destroy');
 
-    Route::get('/usuarios', [PanelController::class, 'users'])->middleware('menu.access:users')->name('users.index');
-    Route::post('/usuarios', [UserManagementController::class, 'store'])->middleware('menu.access:users')->name('users.store');
-    Route::patch('/usuarios/{user}', [UserManagementController::class, 'update'])->middleware('menu.access:users')->name('users.update');
-    Route::delete('/usuarios/{user}', [UserManagementController::class, 'destroy'])->middleware('menu.access:users')->name('users.destroy');
+    Route::get('/usuarios', [PanelController::class, 'users'])->middleware(['menu.access:users', 'role.access:admin'])->name('users.index');
+    Route::post('/usuarios', [UserManagementController::class, 'store'])->middleware(['menu.access:users', 'role.access:admin'])->name('users.store');
+    Route::patch('/usuarios/{user}', [UserManagementController::class, 'update'])->middleware(['menu.access:users', 'role.access:admin'])->name('users.update');
+    Route::delete('/usuarios/{user}', [UserManagementController::class, 'destroy'])->middleware(['menu.access:users', 'role.access:admin'])->name('users.destroy');
 
-    Route::get('/perfiles', [PanelController::class, 'profiles'])->middleware('menu.access:profiles')->name('profiles.index');
-    Route::post('/perfiles', [RolePermissionController::class, 'store'])->middleware('menu.access:profiles')->name('profiles.store');
-    Route::patch('/perfiles/{role}', [RolePermissionController::class, 'update'])->middleware('menu.access:profiles')->name('profiles.update');
-    Route::delete('/perfiles/{role}', [RolePermissionController::class, 'destroy'])->middleware('menu.access:profiles')->name('profiles.destroy');
+    Route::get('/perfiles', [PanelController::class, 'profiles'])->middleware(['menu.access:profiles', 'role.access:admin'])->name('profiles.index');
+    Route::post('/perfiles', [RolePermissionController::class, 'store'])->middleware(['menu.access:profiles', 'role.access:admin'])->name('profiles.store');
+    Route::patch('/perfiles/{role}', [RolePermissionController::class, 'update'])->middleware(['menu.access:profiles', 'role.access:admin'])->name('profiles.update');
+    Route::delete('/perfiles/{role}', [RolePermissionController::class, 'destroy'])->middleware(['menu.access:profiles', 'role.access:admin'])->name('profiles.destroy');
 
-    Route::get('/menus', [PanelController::class, 'menus'])->middleware('menu.access:menus')->name('menus.index');
-    Route::post('/menus', [MenuManagementController::class, 'store'])->middleware('menu.access:menus')->name('menus.store');
-    Route::patch('/menus/{menu}', [MenuManagementController::class, 'update'])->middleware('menu.access:menus')->name('menus.update');
-    Route::delete('/menus/{menu}', [MenuManagementController::class, 'destroy'])->middleware('menu.access:menus')->name('menus.destroy');
+    Route::get('/menus', [PanelController::class, 'menus'])->middleware(['menu.access:menus', 'role.access:admin'])->name('menus.index');
+    Route::post('/menus', [MenuManagementController::class, 'store'])->middleware(['menu.access:menus', 'role.access:admin'])->name('menus.store');
+    Route::patch('/menus/{menu}', [MenuManagementController::class, 'update'])->middleware(['menu.access:menus', 'role.access:admin'])->name('menus.update');
+    Route::delete('/menus/{menu}', [MenuManagementController::class, 'destroy'])->middleware(['menu.access:menus', 'role.access:admin'])->name('menus.destroy');
 
-    Route::get('/backups', [PanelController::class, 'backups'])->middleware('menu.access:backups')->name('backups.index');
-    Route::post('/backups', [SystemBackupController::class, 'store'])->middleware('menu.access:backups')->name('backups.store');
-    Route::get('/backups/{backup}/download', [SystemBackupController::class, 'download'])->middleware('menu.access:backups')->name('backups.download');
+    Route::get('/backups', [PanelController::class, 'backups'])->middleware(['menu.access:backups', 'role.access:admin'])->name('backups.index');
+    Route::post('/backups', [SystemBackupController::class, 'store'])->middleware(['menu.access:backups', 'role.access:admin'])->name('backups.store');
+    Route::get('/backups/{backup}/download', [SystemBackupController::class, 'download'])->middleware(['menu.access:backups', 'role.access:admin'])->name('backups.download');
 
-    Route::get('/configuracion', [PanelController::class, 'config'])->middleware('menu.access:config')->name('config.index');
-    Route::put('/configuracion', [SystemConfigurationController::class, 'update'])->middleware('menu.access:config')->name('config.update');
-    Route::post('/configuracion/correo-prueba', [SystemConfigurationController::class, 'sendTest'])->middleware('menu.access:config')->name('config.email-test');
+    Route::get('/configuracion', [PanelController::class, 'config'])->middleware(['menu.access:config', 'role.access:admin'])->name('config.index');
+    Route::put('/configuracion', [SystemConfigurationController::class, 'update'])->middleware(['menu.access:config', 'role.access:admin'])->name('config.update');
+    Route::post('/configuracion/correo-prueba', [SystemConfigurationController::class, 'sendTest'])->middleware(['menu.access:config', 'role.access:admin'])->name('config.email-test');
 });
 
-Route::prefix('pad')->middleware(['auth', 'password.strong'])->group(function () {
+Route::prefix('pad')->middleware(['auth', 'user.active', 'password.strong'])->group(function () {
     Route::post('/logout', [AuthController::class, 'destroy']);
     Route::get('/perfil', [ProfileController::class, 'show']);
     Route::put('/perfil', [ProfileController::class, 'update']);
@@ -184,43 +184,43 @@ Route::prefix('pad')->middleware(['auth', 'password.strong'])->group(function ()
     Route::get('/', [PanelController::class, 'dashboard'])->middleware('menu.access:dashboard');
 
     Route::get('/secciones', [PanelController::class, 'sections'])->middleware('menu.access:sections');
-    Route::post('/secciones', [SectionController::class, 'store'])->middleware('menu.access:sections');
-    Route::patch('/secciones/{section}', [SectionController::class, 'update'])->middleware('menu.access:sections');
-    Route::delete('/secciones/{section}', [SectionController::class, 'destroy'])->middleware('menu.access:sections');
+    Route::post('/secciones', [SectionController::class, 'store'])->middleware(['menu.access:sections', 'role.access:admin,secretaria']);
+    Route::patch('/secciones/{section}', [SectionController::class, 'update'])->middleware(['menu.access:sections', 'role.access:admin,secretaria']);
+    Route::delete('/secciones/{section}', [SectionController::class, 'destroy'])->middleware(['menu.access:sections', 'role.access:admin,secretaria']);
 
     Route::get('/alumnos', [PanelController::class, 'students'])->middleware('menu.access:students');
-    Route::post('/alumnos', [StudentController::class, 'store'])->middleware('menu.access:students');
-    Route::patch('/alumnos/{student}', [StudentController::class, 'update'])->middleware('menu.access:students');
-    Route::delete('/alumnos/{student}', [StudentController::class, 'destroy'])->middleware('menu.access:students');
+    Route::post('/alumnos', [StudentController::class, 'store'])->middleware(['menu.access:students', 'role.access:admin,secretaria']);
+    Route::patch('/alumnos/{student}', [StudentController::class, 'update'])->middleware(['menu.access:students', 'role.access:admin,secretaria']);
+    Route::delete('/alumnos/{student}', [StudentController::class, 'destroy'])->middleware(['menu.access:students', 'role.access:admin,secretaria']);
 
     Route::get('/asistencia', [PanelController::class, 'attendance'])->middleware('menu.access:attendance');
-    Route::post('/asistencia', [AttendanceController::class, 'sync'])->middleware('menu.access:attendance');
-    Route::post('/asistencia/{student}', [AttendanceController::class, 'mark'])->middleware('menu.access:attendance');
-    Route::post('/asistencia/{student}/restaurar', [AttendanceController::class, 'restore'])->middleware('menu.access:attendance');
+    Route::post('/asistencia', [AttendanceController::class, 'sync'])->middleware(['menu.access:attendance', 'role.access:admin,secretaria,profesor']);
+    Route::post('/asistencia/{student}', [AttendanceController::class, 'mark'])->middleware(['menu.access:attendance', 'role.access:admin,secretaria,profesor']);
+    Route::post('/asistencia/{student}/restaurar', [AttendanceController::class, 'restore'])->middleware(['menu.access:attendance', 'role.access:admin,secretaria,profesor']);
 
     Route::get('/profesores', [PanelController::class, 'teachers'])->middleware('menu.access:teachers');
-    Route::post('/profesores', [TeacherController::class, 'store'])->middleware('menu.access:teachers');
-    Route::patch('/profesores/{teacher}', [TeacherController::class, 'update'])->middleware('menu.access:teachers');
-    Route::delete('/profesores/{teacher}', [TeacherController::class, 'destroy'])->middleware('menu.access:teachers');
+    Route::post('/profesores', [TeacherController::class, 'store'])->middleware(['menu.access:teachers', 'role.access:admin,secretaria']);
+    Route::patch('/profesores/{teacher}', [TeacherController::class, 'update'])->middleware(['menu.access:teachers', 'role.access:admin,secretaria']);
+    Route::delete('/profesores/{teacher}', [TeacherController::class, 'destroy'])->middleware(['menu.access:teachers', 'role.access:admin,secretaria']);
 
     Route::get('/materias', [PanelController::class, 'subjects'])->middleware('menu.access:subjects');
-    Route::post('/materias', [SubjectController::class, 'store'])->middleware('menu.access:subjects');
-    Route::patch('/materias/{subject}', [SubjectController::class, 'update'])->middleware('menu.access:subjects');
-    Route::delete('/materias/{subject}', [SubjectController::class, 'destroy'])->middleware('menu.access:subjects');
+    Route::post('/materias', [SubjectController::class, 'store'])->middleware(['menu.access:subjects', 'role.access:admin,secretaria']);
+    Route::patch('/materias/{subject}', [SubjectController::class, 'update'])->middleware(['menu.access:subjects', 'role.access:admin,secretaria']);
+    Route::delete('/materias/{subject}', [SubjectController::class, 'destroy'])->middleware(['menu.access:subjects', 'role.access:admin,secretaria']);
     Route::get('/plantillas-colector', [PanelController::class, 'collectorTemplates'])->middleware('menu.access:collector_templates');
-    Route::post('/plantillas-colector', [CollectorTemplateController::class, 'store'])->middleware('menu.access:collector_templates');
-    Route::patch('/plantillas-colector/{template}', [CollectorTemplateController::class, 'update'])->middleware('menu.access:collector_templates');
-    Route::delete('/plantillas-colector/{template}', [CollectorTemplateController::class, 'destroy'])->middleware('menu.access:collector_templates');
+    Route::post('/plantillas-colector', [CollectorTemplateController::class, 'store'])->middleware(['menu.access:collector_templates', 'role.access:admin,secretaria']);
+    Route::patch('/plantillas-colector/{template}', [CollectorTemplateController::class, 'update'])->middleware(['menu.access:collector_templates', 'role.access:admin,secretaria']);
+    Route::delete('/plantillas-colector/{template}', [CollectorTemplateController::class, 'destroy'])->middleware(['menu.access:collector_templates', 'role.access:admin,secretaria']);
 
     Route::get('/asignaciones', [PanelController::class, 'assignments'])->middleware('menu.access:assignments');
-    Route::post('/asignaciones', [AssignmentController::class, 'store'])->middleware('menu.access:assignments');
-    Route::patch('/asignaciones/{assignment}', [AssignmentController::class, 'update'])->middleware('menu.access:assignments');
-    Route::delete('/asignaciones/{assignment}', [AssignmentController::class, 'destroy'])->middleware('menu.access:assignments');
+    Route::post('/asignaciones', [AssignmentController::class, 'store'])->middleware(['menu.access:assignments', 'role.access:admin,secretaria']);
+    Route::patch('/asignaciones/{assignment}', [AssignmentController::class, 'update'])->middleware(['menu.access:assignments', 'role.access:admin,secretaria']);
+    Route::delete('/asignaciones/{assignment}', [AssignmentController::class, 'destroy'])->middleware(['menu.access:assignments', 'role.access:admin,secretaria']);
 
     Route::get('/familias', [PanelController::class, 'guardians'])->middleware('menu.access:guardians');
-    Route::post('/familias', [GuardianController::class, 'store'])->middleware('menu.access:guardians');
-    Route::patch('/familias/{guardian}', [GuardianController::class, 'update'])->middleware('menu.access:guardians');
-    Route::delete('/familias/{guardian}', [GuardianController::class, 'destroy'])->middleware('menu.access:guardians');
+    Route::post('/familias', [GuardianController::class, 'store'])->middleware(['menu.access:guardians', 'role.access:admin,secretaria']);
+    Route::patch('/familias/{guardian}', [GuardianController::class, 'update'])->middleware(['menu.access:guardians', 'role.access:admin,secretaria']);
+    Route::delete('/familias/{guardian}', [GuardianController::class, 'destroy'])->middleware(['menu.access:guardians', 'role.access:admin,secretaria']);
     Route::redirect('/padres', '/pad/familias');
 
     Route::get('/notas', [PanelController::class, 'gradeBook'])->middleware('menu.access:gradebook');
@@ -235,40 +235,40 @@ Route::prefix('pad')->middleware(['auth', 'password.strong'])->group(function ()
     Route::get('/report-card', [PanelController::class, 'reportCard'])->middleware('menu.access:reportcard');
     Route::get('/report-card/pdf', [PanelController::class, 'reportCardPdf'])->middleware('menu.access:reportcard');
 
-    Route::get('/correos', [PanelController::class, 'emails'])->middleware('menu.access:emails');
-    Route::post('/correos', [EmailDispatchController::class, 'store'])->middleware('menu.access:emails');
-    Route::post('/correos/lotes', [EmailBatchController::class, 'store'])->middleware('menu.access:emails');
-    Route::post('/correos/lotes/{batch}/reintentar-fallidos', [EmailBatchController::class, 'retryFailed'])->middleware('menu.access:emails');
-    Route::get('/correos/lotes/{batch}/exportar', [EmailBatchController::class, 'export'])->middleware('menu.access:emails');
-    Route::get('/correos/vista-previa', [EmailPreviewController::class, 'show'])->middleware('menu.access:emails');
-    Route::get('/correos/vista-previa/documento', [EmailPreviewController::class, 'document'])->middleware('menu.access:emails');
-    Route::post('/correos/{dispatch}/enviar', [EmailDispatchController::class, 'send'])->middleware('menu.access:emails');
-    Route::patch('/correos/{dispatch}', [EmailDispatchController::class, 'update'])->middleware('menu.access:emails');
-    Route::delete('/correos/{dispatch}', [EmailDispatchController::class, 'destroy'])->middleware('menu.access:emails');
-    Route::post('/correos/plantillas', [EmailTemplateController::class, 'store'])->middleware('menu.access:emails');
-    Route::patch('/correos/plantillas/{template}', [EmailTemplateController::class, 'update'])->middleware('menu.access:emails');
-    Route::delete('/correos/plantillas/{template}', [EmailTemplateController::class, 'destroy'])->middleware('menu.access:emails');
+    Route::get('/correos', [PanelController::class, 'emails'])->middleware(['menu.access:emails', 'role.access:admin,secretaria']);
+    Route::post('/correos', [EmailDispatchController::class, 'store'])->middleware(['menu.access:emails', 'role.access:admin,secretaria']);
+    Route::post('/correos/lotes', [EmailBatchController::class, 'store'])->middleware(['menu.access:emails', 'role.access:admin,secretaria']);
+    Route::post('/correos/lotes/{batch}/reintentar-fallidos', [EmailBatchController::class, 'retryFailed'])->middleware(['menu.access:emails', 'role.access:admin,secretaria']);
+    Route::get('/correos/lotes/{batch}/exportar', [EmailBatchController::class, 'export'])->middleware(['menu.access:emails', 'role.access:admin,secretaria']);
+    Route::get('/correos/vista-previa', [EmailPreviewController::class, 'show'])->middleware(['menu.access:emails', 'role.access:admin,secretaria']);
+    Route::get('/correos/vista-previa/documento', [EmailPreviewController::class, 'document'])->middleware(['menu.access:emails', 'role.access:admin,secretaria']);
+    Route::post('/correos/{dispatch}/enviar', [EmailDispatchController::class, 'send'])->middleware(['menu.access:emails', 'role.access:admin,secretaria']);
+    Route::patch('/correos/{dispatch}', [EmailDispatchController::class, 'update'])->middleware(['menu.access:emails', 'role.access:admin,secretaria']);
+    Route::delete('/correos/{dispatch}', [EmailDispatchController::class, 'destroy'])->middleware(['menu.access:emails', 'role.access:admin,secretaria']);
+    Route::post('/correos/plantillas', [EmailTemplateController::class, 'store'])->middleware(['menu.access:emails', 'role.access:admin,secretaria']);
+    Route::patch('/correos/plantillas/{template}', [EmailTemplateController::class, 'update'])->middleware(['menu.access:emails', 'role.access:admin,secretaria']);
+    Route::delete('/correos/plantillas/{template}', [EmailTemplateController::class, 'destroy'])->middleware(['menu.access:emails', 'role.access:admin,secretaria']);
 
-    Route::get('/usuarios', [PanelController::class, 'users'])->middleware('menu.access:users');
-    Route::post('/usuarios', [UserManagementController::class, 'store'])->middleware('menu.access:users');
-    Route::patch('/usuarios/{user}', [UserManagementController::class, 'update'])->middleware('menu.access:users');
-    Route::delete('/usuarios/{user}', [UserManagementController::class, 'destroy'])->middleware('menu.access:users');
+    Route::get('/usuarios', [PanelController::class, 'users'])->middleware(['menu.access:users', 'role.access:admin']);
+    Route::post('/usuarios', [UserManagementController::class, 'store'])->middleware(['menu.access:users', 'role.access:admin']);
+    Route::patch('/usuarios/{user}', [UserManagementController::class, 'update'])->middleware(['menu.access:users', 'role.access:admin']);
+    Route::delete('/usuarios/{user}', [UserManagementController::class, 'destroy'])->middleware(['menu.access:users', 'role.access:admin']);
 
-    Route::get('/perfiles', [PanelController::class, 'profiles'])->middleware('menu.access:profiles');
-    Route::post('/perfiles', [RolePermissionController::class, 'store'])->middleware('menu.access:profiles');
-    Route::patch('/perfiles/{role}', [RolePermissionController::class, 'update'])->middleware('menu.access:profiles');
-    Route::delete('/perfiles/{role}', [RolePermissionController::class, 'destroy'])->middleware('menu.access:profiles');
+    Route::get('/perfiles', [PanelController::class, 'profiles'])->middleware(['menu.access:profiles', 'role.access:admin']);
+    Route::post('/perfiles', [RolePermissionController::class, 'store'])->middleware(['menu.access:profiles', 'role.access:admin']);
+    Route::patch('/perfiles/{role}', [RolePermissionController::class, 'update'])->middleware(['menu.access:profiles', 'role.access:admin']);
+    Route::delete('/perfiles/{role}', [RolePermissionController::class, 'destroy'])->middleware(['menu.access:profiles', 'role.access:admin']);
 
-    Route::get('/menus', [PanelController::class, 'menus'])->middleware('menu.access:menus');
-    Route::post('/menus', [MenuManagementController::class, 'store'])->middleware('menu.access:menus');
-    Route::patch('/menus/{menu}', [MenuManagementController::class, 'update'])->middleware('menu.access:menus');
-    Route::delete('/menus/{menu}', [MenuManagementController::class, 'destroy'])->middleware('menu.access:menus');
+    Route::get('/menus', [PanelController::class, 'menus'])->middleware(['menu.access:menus', 'role.access:admin']);
+    Route::post('/menus', [MenuManagementController::class, 'store'])->middleware(['menu.access:menus', 'role.access:admin']);
+    Route::patch('/menus/{menu}', [MenuManagementController::class, 'update'])->middleware(['menu.access:menus', 'role.access:admin']);
+    Route::delete('/menus/{menu}', [MenuManagementController::class, 'destroy'])->middleware(['menu.access:menus', 'role.access:admin']);
 
-    Route::get('/backups', [PanelController::class, 'backups'])->middleware('menu.access:backups');
-    Route::post('/backups', [SystemBackupController::class, 'store'])->middleware('menu.access:backups');
-    Route::get('/backups/{backup}/download', [SystemBackupController::class, 'download'])->middleware('menu.access:backups');
+    Route::get('/backups', [PanelController::class, 'backups'])->middleware(['menu.access:backups', 'role.access:admin']);
+    Route::post('/backups', [SystemBackupController::class, 'store'])->middleware(['menu.access:backups', 'role.access:admin']);
+    Route::get('/backups/{backup}/download', [SystemBackupController::class, 'download'])->middleware(['menu.access:backups', 'role.access:admin']);
 
-    Route::get('/configuracion', [PanelController::class, 'config'])->middleware('menu.access:config');
-    Route::put('/configuracion', [SystemConfigurationController::class, 'update'])->middleware('menu.access:config');
-    Route::post('/configuracion/correo-prueba', [SystemConfigurationController::class, 'sendTest'])->middleware('menu.access:config');
+    Route::get('/configuracion', [PanelController::class, 'config'])->middleware(['menu.access:config', 'role.access:admin']);
+    Route::put('/configuracion', [SystemConfigurationController::class, 'update'])->middleware(['menu.access:config', 'role.access:admin']);
+    Route::post('/configuracion/correo-prueba', [SystemConfigurationController::class, 'sendTest'])->middleware(['menu.access:config', 'role.access:admin']);
 });

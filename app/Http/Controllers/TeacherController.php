@@ -4,10 +4,12 @@ namespace App\Http\Controllers;
 
 use App\Models\Teacher;
 use App\Models\User;
-use Illuminate\Support\Facades\DB;
-use Illuminate\Support\Facades\Hash;
+use App\Support\PasswordPolicy;
 use Illuminate\Http\RedirectResponse;
 use Illuminate\Http\Request;
+use Illuminate\Support\Facades\DB;
+use Illuminate\Support\Facades\Hash;
+use Illuminate\Support\Str;
 use Illuminate\Validation\Rule;
 
 class TeacherController extends Controller
@@ -59,7 +61,10 @@ class TeacherController extends Controller
             if ($teacher->usuario_id) {
                 User::query()
                     ->where('id', $teacher->usuario_id)
-                    ->update(['activo' => false]);
+                    ->update([
+                        'activo' => false,
+                        'remember_token' => Str::random(60),
+                    ]);
             }
         });
 
@@ -80,8 +85,8 @@ class TeacherController extends Controller
             ],
             'especialidad' => ['nullable', 'string', 'max:150'],
             'nombre_usuario' => ['required', 'string', 'max:60', Rule::unique('usuarios', 'nombre_usuario')->ignore($teacher?->usuario_id)],
-            'password' => [$teacher?->usuario_id ? 'nullable' : 'required', 'string', 'min:6'],
-        ]);
+            'password' => PasswordPolicy::rules(required: ! $teacher?->usuario_id),
+        ], PasswordPolicy::messages());
     }
 
     private function createTeacherUser(array $data): User
@@ -114,9 +119,14 @@ class TeacherController extends Controller
 
         if (! empty($data['password'])) {
             $payload['password_hash'] = Hash::make($data['password']);
+            $payload['must_change_password'] = false;
         }
 
         $user->update($payload);
+
+        if (! empty($data['password'])) {
+            $user->forceFill(['remember_token' => Str::random(60)])->save();
+        }
 
         return $user;
     }

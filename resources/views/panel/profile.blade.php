@@ -8,7 +8,7 @@
     $roleName = ucfirst($profileUser->role?->nombre ?? 'Usuario');
     $teacher = $profileUser->teacher;
     $initials = strtoupper(substr($profileUser->nombres ?: 'U', 0, 1).substr($profileUser->apellidos ?: 'P', 0, 1));
-    $passwordChangeRequired = (bool) session('password_change_required', false);
+    $passwordChangeRequired = (bool) $profileUser->must_change_password;
 @endphp
 <style>
     .profile-shell { max-width: 1180px; margin: 0 auto; }

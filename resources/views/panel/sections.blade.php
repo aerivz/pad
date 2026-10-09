@@ -3,7 +3,7 @@
 @section('title', 'Secciones')
 
 @section('content')
-@php($formVisible = $editSection !== null || $errors->any())
+@php($formVisible = $canManageAcademicData && ($editSection !== null || $errors->any()))
 
 <div class="card maint-card">
     <div class="card-header border-0">
@@ -13,9 +13,9 @@
                 <span>Lista de secciones</span>
             </div>
             <div class="maint-actions">
-                <button class="btn btn-success btn-sm" type="button" data-toggle="modal" data-target="#sectionFormModal">
+                @if ($canManageAcademicData)<button class="btn btn-success btn-sm" type="button" data-toggle="modal" data-target="#sectionFormModal">
                     <i class="fas fa-plus mr-1"></i>{{ $editSection ? 'Editar seccion' : 'Nueva seccion' }}
-                </button>
+                </button>@endif
             </div>
         </div>
     </div>
@@ -90,8 +90,9 @@
                                 data-average="{{ $section->promedio ?? 'Sin promedio' }}">
                                 <i class="fas fa-eye"></i>
                             </button>
-                            <a href="{{ \App\Support\AppUrl::route('sections.index') }}?edit_section={{ $section->id }}" class="btn btn-xs btn-warning"><i class="fas fa-pen"></i></a>
+                            @if ($canManageAcademicData)<a href="{{ \App\Support\AppUrl::route('sections.index') }}?edit_section={{ $section->id }}" class="btn btn-xs btn-warning"><i class="fas fa-pen"></i></a>
                             <form method="POST" action="{{ \App\Support\AppUrl::route('sections.destroy', ['section' => $section->id]) }}" data-swal-confirm="true" data-swal-title="Desactivar seccion" data-swal-text="La seccion quedara inactiva y ya no aparecera en los listados principales." data-swal-confirm-label="Si, desactivar">@csrf @method('DELETE')<button class="btn btn-xs btn-danger"><i class="fas fa-user-slash"></i></button></form>
+                            @endif
                         </td>
                     </tr>
                 @empty

@@ -14,7 +14,7 @@
             return $member;
         })
         ->all();
-    $formVisible = $editGuardian !== null || $errors->any();
+    $formVisible = $canManageAcademicData && ($editGuardian !== null || $errors->any());
 @endphp
 
 <div class="card maint-card">
@@ -25,9 +25,9 @@
                 <span>Miembros familiares</span>
             </div>
             <div class="maint-actions">
-                <button class="btn btn-success btn-sm" type="button" data-toggle="modal" data-target="#guardianFormModal">
+                @if ($canManageAcademicData)<button class="btn btn-success btn-sm" type="button" data-toggle="modal" data-target="#guardianFormModal">
                     <i class="fas fa-plus mr-1"></i>{{ $editGuardian ? 'Editar familiar' : 'Nuevo familiar' }}
-                </button>
+                </button>@endif
             </div>
         </div>
     </div>
@@ -80,8 +80,9 @@
                         </td>
                         <td class="maint-actions-cell">
                             <button type="button" class="btn btn-xs btn-info guardian-view-button" data-name="{{ $parent->nombres }} {{ $parent->apellidos }}" data-email="{{ $parent->email_principal }}" data-students="{{ $parent->total_hijos }}" data-links="{{ $parent->miembros ?: 'Sin vinculos' }}" data-status="{{ $parent->ultimo_envio_id ? 'Con historial' : 'Sin envios' }}"><i class="fas fa-eye"></i></button>
-                            <a href="{{ \App\Support\AppUrl::route('guardians.index') }}?edit_guardian={{ $parent->id }}" class="btn btn-xs btn-warning"><i class="fas fa-pen"></i></a>
+                            @if ($canManageAcademicData)<a href="{{ \App\Support\AppUrl::route('guardians.index') }}?edit_guardian={{ $parent->id }}" class="btn btn-xs btn-warning"><i class="fas fa-pen"></i></a>
                             <form method="POST" action="{{ \App\Support\AppUrl::route('guardians.destroy', ['guardian' => $parent->id]) }}" data-swal-confirm="true" data-swal-title="Desactivar familiar" data-swal-text="El miembro familiar quedara inactivo y dejara de mostrarse en la gestion principal." data-swal-confirm-label="Si, desactivar">@csrf @method('DELETE')<button class="btn btn-xs btn-danger"><i class="fas fa-user-slash"></i></button></form>
+                            @endif
                         </td>
                     </tr>
                 @empty
@@ -111,9 +112,19 @@
                     @csrf
                     @if ($editGuardian) @method('PATCH') @endif
                     <div class="row">
-                        <div class="col-md-4 form-group"><label>Nombres</label><input name="nombres" class="form-control" value="{{ old('nombres', $editGuardian->nombres ?? '') }}" required></div>
-                        <div class="col-md-4 form-group"><label>Apellidos</label><input name="apellidos" class="form-control" value="{{ old('apellidos', $editGuardian->apellidos ?? '') }}" required></div>
-                        <div class="col-md-4 form-group"><label>Correo principal</label><input type="email" name="email_principal" class="form-control" value="{{ old('email_principal', $editGuardian->email_principal ?? '') }}" required></div>
+                        <div class="col-md-3 form-group"><label>Nombres</label><input name="nombres" class="form-control" value="{{ old('nombres', $editGuardian->nombres ?? '') }}" required></div>
+                        <div class="col-md-3 form-group"><label>Apellidos</label><input name="apellidos" class="form-control" value="{{ old('apellidos', $editGuardian->apellidos ?? '') }}" required></div>
+                        <div class="col-md-3 form-group"><label>Correo principal</label><input type="email" name="email_principal" class="form-control" value="{{ old('email_principal', $editGuardian->email_principal ?? '') }}" required></div>
+                        <div class="col-md-3 form-group">
+                            <label>Usuario del portal</label>
+                            <select name="usuario_id" class="form-control">
+                                <option value="">Sin usuario vinculado</option>
+                                @foreach ($parentUsers as $parentUser)
+                                    <option value="{{ $parentUser->id }}" @selected((string) old('usuario_id', $editGuardian->usuario_id ?? '') === (string) $parentUser->id)>{{ $parentUser->nombres }} {{ $parentUser->apellidos }} ({{ $parentUser->nombre_usuario }})</option>
+                                @endforeach
+                            </select>
+                            <small class="text-muted">Determina qué alumnos puede consultar este usuario.</small>
+                        </div>
                     </div>
                     <div id="family-links">
                         @foreach ($familyMembers as $index => $member)

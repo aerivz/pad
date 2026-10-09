@@ -3,7 +3,7 @@
 @section('title', 'Materias')
 
 @section('content')
-@php($formVisible = $editSubject !== null || $errors->any())
+@php($formVisible = $canManageAcademicData && ($editSubject !== null || $errors->any()))
 
 <div class="card maint-card">
     <div class="card-header border-0">
@@ -16,9 +16,9 @@
                 <a href="{{ \App\Support\AppUrl::route('collector-templates.index') }}" class="btn btn-outline-primary btn-sm">
                     <i class="fas fa-layer-group mr-1"></i>Plantillas de notas
                 </a>
-                <button class="btn btn-success btn-sm" type="button" data-toggle="modal" data-target="#subjectFormModal">
+                @if ($canManageAcademicData)<button class="btn btn-success btn-sm" type="button" data-toggle="modal" data-target="#subjectFormModal">
                     <i class="fas fa-plus mr-1"></i>{{ $editSubject ? 'Editar materia' : 'Nueva materia' }}
-                </button>
+                </button>@endif
             </div>
         </div>
     </div>
@@ -82,8 +82,9 @@
                                 data-average="{{ $subject->promedio ?? 'Sin promedio' }}">
                                 <i class="fas fa-eye"></i>
                             </button>
-                            <a href="{{ \App\Support\AppUrl::route('subjects.index') }}?edit_subject={{ $subject->id }}" class="btn btn-xs btn-warning"><i class="fas fa-pen"></i></a>
+                            @if ($canManageAcademicData)<a href="{{ \App\Support\AppUrl::route('subjects.index') }}?edit_subject={{ $subject->id }}" class="btn btn-xs btn-warning"><i class="fas fa-pen"></i></a>
                             <form method="POST" action="{{ \App\Support\AppUrl::route('subjects.destroy', ['subject' => $subject->id]) }}" data-swal-confirm="true" data-swal-title="Desactivar materia" data-swal-text="La materia quedara inactiva para nuevos procesos, pero el historial se conservara." data-swal-confirm-label="Si, desactivar">@csrf @method('DELETE')<button class="btn btn-xs btn-danger"><i class="fas fa-user-slash"></i></button></form>
+                            @endif
                         </td>
                     </tr>
                 @empty

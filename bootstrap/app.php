@@ -1,10 +1,16 @@
 <?php
 
+use App\Http\Middleware\EnsureActiveUser;
+use App\Http\Middleware\EnsureMenuAccess;
+use App\Http\Middleware\EnsureRoleAccess;
+use App\Http\Middleware\EnsureStrongPassword;
 use App\Services\TelegramErrorNotifier;
 use App\Support\AppUrl;
 use Illuminate\Foundation\Application;
 use Illuminate\Foundation\Configuration\Exceptions;
 use Illuminate\Foundation\Configuration\Middleware;
+use Illuminate\Http\Request;
+use Symfony\Component\HttpKernel\Exception\HttpException;
 
 return Application::configure(basePath: dirname(__DIR__))
     ->withRouting(
@@ -14,16 +20,18 @@ return Application::configure(basePath: dirname(__DIR__))
     )
     ->withMiddleware(function (Middleware $middleware): void {
         $middleware->alias([
-            'menu.access' => \App\Http\Middleware\EnsureMenuAccess::class,
-            'password.strong' => \App\Http\Middleware\EnsureStrongPassword::class,
+            'menu.access' => EnsureMenuAccess::class,
+            'role.access' => EnsureRoleAccess::class,
+            'user.active' => EnsureActiveUser::class,
+            'password.strong' => EnsureStrongPassword::class,
         ]);
     })
     ->withExceptions(function (Exceptions $exceptions): void {
-        $exceptions->report(function (\Throwable $exception) {
+        $exceptions->report(function (Throwable $exception) {
             app(TelegramErrorNotifier::class)->send($exception, request());
         });
 
-        $exceptions->render(function (\Symfony\Component\HttpKernel\Exception\HttpException $exception, \Illuminate\Http\Request $request) {
+        $exceptions->render(function (HttpException $exception, Request $request) {
             if ($exception->getStatusCode() === 419) {
                 return redirect(AppUrl::route('login'))
                     ->with('status', 'La sesion expiro. Ingresa nuevamente para continuar.');

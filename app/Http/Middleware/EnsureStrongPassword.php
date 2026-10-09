@@ -13,7 +13,7 @@ class EnsureStrongPassword
 {
     public function handle(Request $request, Closure $next): Response
     {
-        if (! $request->user() || ! (bool) $request->session()->get('password_change_required', false)) {
+        if (! $request->user() || ! $request->user()->must_change_password) {
             return $next($request);
         }
 

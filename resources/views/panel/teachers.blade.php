@@ -3,7 +3,7 @@
 @section('title', 'Profesores')
 
 @section('content')
-@php($formVisible = $editTeacher !== null || $errors->any())
+@php($formVisible = $canManageAcademicData && ($editTeacher !== null || $errors->any()))
 
 <div class="card maint-card">
     <div class="card-header border-0">
@@ -13,9 +13,9 @@
                 <span>Lista de profesores</span>
             </div>
             <div class="maint-actions">
-                <button class="btn btn-success btn-sm" type="button" data-toggle="modal" data-target="#teacherFormModal">
+                @if ($canManageAcademicData)<button class="btn btn-success btn-sm" type="button" data-toggle="modal" data-target="#teacherFormModal">
                     <i class="fas fa-plus mr-1"></i>{{ $editTeacher ? 'Editar profesor' : 'Nuevo profesor' }}
-                </button>
+                </button>@endif
             </div>
         </div>
     </div>
@@ -88,8 +88,9 @@
                                 data-subjects="{{ $teacher->materias ?: 'Sin materias asignadas' }}">
                                 <i class="fas fa-eye"></i>
                             </button>
-                            <a href="{{ \App\Support\AppUrl::route('teachers.index') }}?edit_teacher={{ $teacher->id }}" class="btn btn-xs btn-warning"><i class="fas fa-pen"></i></a>
+                            @if ($canManageAcademicData)<a href="{{ \App\Support\AppUrl::route('teachers.index') }}?edit_teacher={{ $teacher->id }}" class="btn btn-xs btn-warning"><i class="fas fa-pen"></i></a>
                             <form method="POST" action="{{ \App\Support\AppUrl::route('teachers.destroy', ['teacher' => $teacher->id]) }}" data-swal-confirm="true" data-swal-title="Desactivar profesor" data-swal-text="El profesor y su usuario quedaran inactivos en el sistema." data-swal-confirm-label="Si, desactivar">@csrf @method('DELETE')<button class="btn btn-xs btn-danger"><i class="fas fa-user-slash"></i></button></form>
+                            @endif
                         </td>
                     </tr>
                 @empty
@@ -134,7 +135,8 @@
                             </select>
                         </div>
                         <div class="col-md-6 form-group"><label>Usuario del sistema</label><input name="nombre_usuario" class="form-control" value="{{ old('nombre_usuario', $editTeacher->nombre_usuario ?? '') }}" required></div>
-                        <div class="col-md-6 form-group"><label>{{ !empty($editTeacher->usuario_id) ? 'Nueva contrasena (opcional)' : 'Contrasena inicial' }}</label><input type="password" name="password" class="form-control" {{ !empty($editTeacher->usuario_id) ? '' : 'required' }}></div>
+                        <div class="col-md-3 form-group"><label>{{ !empty($editTeacher->usuario_id) ? 'Nueva contrasena (opcional)' : 'Contrasena inicial' }}</label><input type="password" name="password" class="form-control" minlength="8" autocomplete="new-password" {{ !empty($editTeacher->usuario_id) ? '' : 'required' }}></div>
+                        <div class="col-md-3 form-group"><label>Confirmar contrasena</label><input type="password" name="password_confirmation" class="form-control" minlength="8" autocomplete="new-password" {{ !empty($editTeacher->usuario_id) ? '' : 'required' }}></div>
                     </div>
                     <button class="btn btn-primary btn-sm">{{ $editTeacher ? 'Guardar cambios' : 'Agregar profesor' }}</button>
                     @if ($editTeacher)<a href="{{ \App\Support\AppUrl::route('teachers.index') }}" class="btn btn-default btn-sm">Cancelar</a>@endif

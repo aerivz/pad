@@ -31,14 +31,16 @@ class AuthController extends Controller
             $request->session()->regenerate();
 
             if (! PasswordPolicy::isStrong($credentials['password'])) {
-                $request->session()->put('password_change_required', true);
+                $request->user()->update(['must_change_password' => true]);
                 $request->session()->forget('url.intended');
 
                 return redirect(AppUrl::route('profile.show'))
                     ->with('error', 'Tu contrasena actual no cumple los requisitos de seguridad. Debes cambiarla para continuar.');
             }
 
-            $request->session()->forget('password_change_required');
+            if ($request->user()->must_change_password) {
+                $request->user()->update(['must_change_password' => false]);
+            }
 
             $intended = $request->session()->pull('url.intended');
 

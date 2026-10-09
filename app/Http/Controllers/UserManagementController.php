@@ -7,6 +7,7 @@ use App\Support\PasswordPolicy;
 use Illuminate\Http\RedirectResponse;
 use Illuminate\Http\Request;
 use Illuminate\Support\Facades\Hash;
+use Illuminate\Support\Str;
 use Illuminate\Validation\Rule;
 
 class UserManagementController extends Controller
@@ -56,16 +57,24 @@ class UserManagementController extends Controller
 
         if (! empty($data['password'])) {
             $payload['password_hash'] = Hash::make($data['password']);
+            $payload['must_change_password'] = false;
         }
 
         $user->update($payload);
+
+        if (! empty($data['password'])) {
+            $user->forceFill(['remember_token' => Str::random(60)])->save();
+        }
 
         return redirect('/pad/usuarios')->with('status', 'Usuario actualizado correctamente.');
     }
 
     public function destroy(User $user): RedirectResponse
     {
-        $user->update(['activo' => false]);
+        $user->forceFill([
+            'activo' => false,
+            'remember_token' => Str::random(60),
+        ])->save();
 
         return redirect('/pad/usuarios')->with('status', 'Usuario desactivado correctamente.');
     }

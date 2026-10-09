@@ -33,7 +33,7 @@ class ProfileController extends Controller
     {
         /** @var User $user */
         $user = $request->user();
-        $passwordChangeRequired = (bool) $request->session()->get('password_change_required', false);
+        $passwordChangeRequired = (bool) $user->must_change_password;
         $data = $request->validate([
             'nombres' => ['required', 'string', 'max:100'],
             'apellidos' => ['required', 'string', 'max:100'],
@@ -71,7 +71,7 @@ class ProfileController extends Controller
 
         if (filled($data['password'] ?? null)) {
             $payload['password_hash'] = Hash::make($data['password']);
-            $request->session()->forget('password_change_required');
+            $payload['must_change_password'] = false;
         }
 
         $user->update($payload);

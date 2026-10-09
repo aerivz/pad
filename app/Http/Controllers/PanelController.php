@@ -2,21 +2,20 @@
 
 namespace App\Http\Controllers;
 
-use Barryvdh\DomPDF\Facade\Pdf;
 use App\Models\Assignment;
-use App\Models\CollectorTemplate;
-use App\Models\EmailDispatch;
-use App\Models\EmailBatch;
-use App\Models\EmailTemplate;
 use App\Models\CollectorCategory;
+use App\Models\CollectorTemplate;
+use App\Models\EmailBatch;
+use App\Models\EmailDispatch;
+use App\Models\EmailTemplate;
 use App\Models\Guardian;
 use App\Models\Menu;
 use App\Models\Role;
 use App\Models\Section;
 use App\Models\Student;
 use App\Models\StudentAttendance;
-use App\Models\Subject;
 use App\Models\StudentPeriodExam;
+use App\Models\Subject;
 use App\Models\SystemBackup;
 use App\Models\Teacher;
 use App\Models\User;
@@ -24,12 +23,14 @@ use App\Services\GradeCollectorService;
 use App\Services\SystemSettingsService;
 use App\Support\CollectorTemplateCatalog;
 use App\Support\GeneratedDocumentCatalog;
+use App\Support\StudentAccess;
+use Barryvdh\DomPDF\Facade\Pdf;
+use Illuminate\Http\RedirectResponse;
 use Illuminate\Support\Collection;
 use Illuminate\Support\Facades\Auth;
 use Illuminate\Support\Facades\DB;
-use Illuminate\Http\RedirectResponse;
-use Symfony\Component\HttpFoundation\Response;
 use Illuminate\View\View;
+use Symfony\Component\HttpFoundation\Response;
 
 class PanelController extends Controller
 {
@@ -55,12 +56,21 @@ class PanelController extends Controller
 
     public function students(): View
     {
+        $editStudent = request()->filled('edit_student')
+            ? Student::active()->find(request()->integer('edit_student'))
+            : null;
+
+        if ($editStudent) {
+            $user = Auth::user();
+            abort_unless($user instanceof User && app(StudentAccess::class)->allowsStudent($user, $editStudent->id), 403);
+        }
+
         return view('panel.students', [
             ...$this->baseData(),
             'activeMenu' => 'students',
             'sections' => $this->sectionsData(),
             'students' => $this->studentsData(),
-            'editStudent' => request()->filled('edit_student') ? Student::active()->find(request()->integer('edit_student')) : null,
+            'editStudent' => $editStudent,
         ]);
     }
 
@@ -176,6 +186,10 @@ class PanelController extends Controller
 
     public function guardians(): View
     {
+        $editGuardian = request()->filled('edit_guardian')
+            ? $this->guardianForEdit(request()->integer('edit_guardian'))
+            : null;
+
         return view('panel.guardians', [
             ...$this->baseData(),
             'activeMenu' => 'guardians',
@@ -183,7 +197,8 @@ class PanelController extends Controller
             'studentsForFamily' => $this->studentsForFamily(),
             'studentSections' => Section::active()->orderBy('grado')->orderBy('nombre')->get(['id', 'grado', 'nombre']),
             'relationshipOptions' => $this->relationshipOptions(),
-            'editGuardian' => request()->filled('edit_guardian') ? $this->guardianForEdit(request()->integer('edit_guardian')) : null,
+            'editGuardian' => $editGuardian,
+            'parentUsers' => $this->parentUsersForGuardian($editGuardian?->id),
         ]);
     }
 
@@ -248,6 +263,7 @@ class PanelController extends Controller
             'trimestre_id' => $selectedPeriodMeta['type'] === 'trimester' ? $selectedPeriodMeta['trimester_id'] : null,
             'periodo' => $selectedPeriod,
         ];
+        $this->guardReportAccess($filters['alumno_id'], $filters['seccion_id']);
 
         return view('panel.reportcard', [
             ...$this->baseData(),
@@ -256,7 +272,7 @@ class PanelController extends Controller
             'reportCard' => $this->buildReportCard($filters),
             'reportFilters' => $filters,
             'reportStudents' => $this->studentsForFamily(),
-            'reportSections' => Section::active()->orderBy('grado')->orderBy('nombre')->get(),
+            'reportSections' => $this->reportSections(),
             'reportTrimesters' => $trimesters,
             'reportPeriodOptions' => collect([[
                 'value' => '',
@@ -271,6 +287,7 @@ class PanelController extends Controller
     {
         $studentId = request()->integer('alumno_id');
         $sectionId = request()->integer('seccion_id');
+        $this->guardReportAccess($studentId, $sectionId);
 
         if (! $studentId && ! $sectionId) {
             return redirect()
@@ -380,14 +397,24 @@ class PanelController extends Controller
 
     private function baseData(): array
     {
+        $user = Auth::user();
+        abort_unless($user instanceof User, 403);
+        $studentIds = app(StudentAccess::class)->studentIds($user);
+        $sectionIds = app(StudentAccess::class)->sectionIds($user);
+        $roleName = $user->role()->value('nombre');
+
         return [
             'stats' => [
-                'alumnos' => DB::table('alumnos')->where('activo', true)->count(),
-                'secciones' => DB::table('secciones')->where('activo', true)->count(),
-                'profesores' => DB::table('profesores')->where('activo', true)->count(),
-                'notas' => DB::table('notas_alumnos')->where('activo', true)->count(),
+                'alumnos' => DB::table('alumnos')->where('activo', true)->when($studentIds !== null, fn ($query) => $query->whereIn('id', $studentIds))->count(),
+                'secciones' => DB::table('secciones')->where('activo', true)->when($sectionIds !== null, fn ($query) => $query->whereIn('id', $sectionIds))->count(),
+                'profesores' => DB::table('profesores')->where('activo', true)->when($sectionIds !== null, function ($query) use ($sectionIds): void {
+                    $query->whereIn('id', DB::table('asignaciones')->where('activo', true)->whereIn('seccion_id', $sectionIds)->pluck('profesor_id'));
+                })->count(),
+                'notas' => DB::table('notas_alumnos')->where('activo', true)->when($studentIds !== null, fn ($query) => $query->whereIn('alumno_id', $studentIds))->count(),
             ],
             'roles' => DB::table('roles')->where('activo', true)->orderBy('nombre')->get(),
+            'canManageAcademicData' => in_array($roleName, ['admin', 'secretaria'], true),
+            'canManageAttendance' => in_array($roleName, ['admin', 'secretaria', 'profesor'], true),
             'menu' => $this->applicationMenu(),
         ];
     }
@@ -447,7 +474,7 @@ class PanelController extends Controller
     {
         $finals = $this->subjectFinalsSubquery();
 
-        return DB::table('secciones as s')
+        $query = DB::table('secciones as s')
             ->where('s.activo', true)
             ->leftJoin('alumnos as a', function ($join) {
                 $join->on('a.seccion_id', '=', 's.id')->where('a.activo', true);
@@ -462,7 +489,17 @@ class PanelController extends Controller
                 $join->on('sf.asignacion_id', '=', 'ag.id')->on('sf.alumno_id', '=', 'a.id');
             })
             ->groupBy('s.id', 's.nombre', 's.grado', 's.anio_escolar', 's.titular_profesor_id', 'tp.nombres', 'tp.apellidos')
-            ->selectRaw("s.id, s.nombre, s.grado, s.anio_escolar, s.titular_profesor_id, TRIM(CONCAT(COALESCE(tp.nombres, ''), ' ', COALESCE(tp.apellidos, ''))) as titular, COUNT(DISTINCT a.id) as total_alumnos, COUNT(DISTINCT ag.materia_id) as total_materias, ROUND(AVG(sf.nota_final), 1) as promedio")
+            ->selectRaw("s.id, s.nombre, s.grado, s.anio_escolar, s.titular_profesor_id, TRIM(CONCAT(COALESCE(tp.nombres, ''), ' ', COALESCE(tp.apellidos, ''))) as titular, COUNT(DISTINCT a.id) as total_alumnos, COUNT(DISTINCT ag.materia_id) as total_materias, ROUND(AVG(sf.nota_final), 1) as promedio");
+
+        $user = Auth::user();
+        abort_unless($user instanceof User, 403);
+        $sectionIds = app(StudentAccess::class)->sectionIds($user);
+
+        if ($sectionIds !== null) {
+            $query->whereIn('s.id', $sectionIds);
+        }
+
+        return $query
             ->orderBy('s.id')
             ->get();
     }
@@ -471,7 +508,7 @@ class PanelController extends Controller
     {
         $finals = $this->subjectFinalsSubquery();
 
-        return DB::table('alumnos as a')
+        $query = DB::table('alumnos as a')
             ->where('a.activo', true)
             ->join('secciones as s', function ($join) {
                 $join->on('s.id', '=', 'a.seccion_id')->where('s.activo', true);
@@ -481,7 +518,11 @@ class PanelController extends Controller
                 $join->on('sf.alumno_id', '=', 'a.id');
             })
             ->groupBy('a.id', 'a.seccion_id', 'a.nombres', 'a.apellidos', 's.grado', 's.nombre')
-            ->selectRaw('a.id, a.seccion_id, a.nombres, a.apellidos, s.grado, s.nombre as seccion_nombre, COUNT(DISTINCT pa.padre_id) as total_padres, ROUND(AVG(sf.nota_final), 1) as promedio')
+            ->selectRaw('a.id, a.seccion_id, a.nombres, a.apellidos, s.grado, s.nombre as seccion_nombre, COUNT(DISTINCT pa.padre_id) as total_padres, ROUND(AVG(sf.nota_final), 1) as promedio');
+
+        $this->applyStudentAccess($query, 'a.id');
+
+        return $query
             ->orderBy('a.id')
             ->get();
     }
@@ -591,11 +632,15 @@ class PanelController extends Controller
 
     private function studentsForFamily()
     {
-        return DB::table('alumnos as a')
+        $query = DB::table('alumnos as a')
             ->join('secciones as s', function ($join) {
                 $join->on('s.id', '=', 'a.seccion_id')->where('s.activo', true);
             })
-            ->where('a.activo', true)
+            ->where('a.activo', true);
+
+        $this->applyStudentAccess($query, 'a.id');
+
+        return $query
             ->selectRaw("a.id, a.seccion_id, CONCAT(a.nombres, ' ', a.apellidos, ' - ', s.grado, ' ', s.nombre) as nombre_completo")
             ->orderBy('a.nombres')
             ->get();
@@ -604,6 +649,25 @@ class PanelController extends Controller
     private function relationshipOptions(): array
     {
         return ['Padre', 'Madre', 'Tio', 'Tia', 'Hermano', 'Hermana', 'Abuelo', 'Abuela', 'Encargado', 'Otro'];
+    }
+
+    private function parentUsersForGuardian(?int $guardianId)
+    {
+        return DB::table('usuarios as u')
+            ->join('roles as r', function ($join): void {
+                $join->on('r.id', '=', 'u.rol_id')
+                    ->where('r.activo', true)
+                    ->where('r.nombre', 'padre');
+            })
+            ->leftJoin('padres as p', 'p.usuario_id', '=', 'u.id')
+            ->where('u.activo', true)
+            ->where(function ($query) use ($guardianId): void {
+                $query->whereNull('p.id')
+                    ->when($guardianId, fn ($builder) => $builder->orWhere('p.id', $guardianId));
+            })
+            ->orderBy('u.nombres')
+            ->orderBy('u.apellidos')
+            ->get(['u.id', 'u.nombre_usuario', 'u.nombres', 'u.apellidos', 'u.email']);
     }
 
     private function guardianForEdit(int $guardianId): ?Guardian
@@ -770,10 +834,14 @@ class PanelController extends Controller
 
     private function audit()
     {
-        return DB::table('auditoria_notas as an')
+        $query = DB::table('auditoria_notas as an')
             ->join('usuarios as u', 'u.id', '=', 'an.usuario_id')
             ->join('notas as n', 'n.id', '=', 'an.nota_id')
-            ->select('an.*', 'u.nombre_usuario', 'n.alumno_id')
+            ->select('an.*', 'u.nombre_usuario', 'n.alumno_id');
+
+        $this->applyStudentAccess($query, 'n.alumno_id');
+
+        return $query
             ->orderByDesc('an.id')
             ->limit(5)
             ->get();
@@ -952,6 +1020,8 @@ class PanelController extends Controller
             ->groupBy('a.id', 's.id', 'a.nombres', 'a.apellidos', 's.grado', 's.nombre', 'm.nombre')
             ->orderBy('a.id');
 
+        $this->applyStudentAccess($query, 'a.id');
+
         if (! empty($filters['seccion_id'])) {
             $query->where('s.id', $filters['seccion_id']);
         }
@@ -1000,9 +1070,11 @@ class PanelController extends Controller
             })
             ->selectRaw("a.id, s.id as seccion_id, CONCAT(a.nombres, ' ', a.apellidos) as alumno, CONCAT(s.grado, ' ', s.nombre) as seccion, m.nombre as materia, ROUND(epa.valor, 2) as promedio")
             ->when(! empty($filters['seccion_id']), fn ($builder) => $builder->where('s.id', $filters['seccion_id']))
-            ->when(! empty($filters['alumno_id']), fn ($builder) => $builder->where('a.id', $filters['alumno_id']))
-            ->orderBy('a.id')
-            ->get();
+            ->when(! empty($filters['alumno_id']), fn ($builder) => $builder->where('a.id', $filters['alumno_id']));
+
+        $this->applyStudentAccess($query, 'a.id');
+
+        $query = $query->orderBy('a.id')->get();
 
         return $query
             ->groupBy('id')
@@ -1027,6 +1099,9 @@ class PanelController extends Controller
 
     private function buildAnnualStudentReport(int $studentId, ?int $sectionId = null): ?array
     {
+        $user = Auth::user();
+        abort_unless($user instanceof User && app(StudentAccess::class)->allowsStudent($user, $studentId), 403);
+
         $student = DB::table('alumnos as a')
             ->join('secciones as s', function ($join) {
                 $join->on('s.id', '=', 'a.seccion_id')->where('s.activo', true);
@@ -1162,9 +1237,16 @@ class PanelController extends Controller
             return collect();
         }
 
-        $studentIds = DB::table('alumnos')
+        $user = Auth::user();
+        abort_unless($user instanceof User && app(StudentAccess::class)->allowsSection($user, $sectionId), 403);
+
+        $studentQuery = DB::table('alumnos')
             ->where('activo', true)
-            ->where('seccion_id', $sectionId)
+            ->where('seccion_id', $sectionId);
+
+        $this->applyStudentAccess($studentQuery, 'id');
+
+        $studentIds = $studentQuery
             ->orderBy('apellidos')
             ->orderBy('nombres')
             ->pluck('id');
@@ -1338,8 +1420,11 @@ class PanelController extends Controller
             })
             ->where('a.activo', true)
             ->when(! empty($filters['seccion_id']), fn ($query) => $query->where('s.id', $filters['seccion_id']))
-            ->when(! empty($filters['alumno_id']), fn ($query) => $query->where('a.id', $filters['alumno_id']))
-            ->orderBy('a.apellidos')
+            ->when(! empty($filters['alumno_id']), fn ($query) => $query->where('a.id', $filters['alumno_id']));
+
+        $this->applyStudentAccess($studentQuery, 'a.id');
+
+        $studentQuery = $studentQuery->orderBy('a.apellidos')
             ->orderBy('a.nombres')
             ->pluck('a.id');
 
@@ -1530,6 +1615,46 @@ class PanelController extends Controller
     private function collectorTemplateCatalog(): CollectorTemplateCatalog
     {
         return app(CollectorTemplateCatalog::class);
+    }
+
+    private function reportSections()
+    {
+        $query = Section::active()->orderBy('grado')->orderBy('nombre');
+        $user = Auth::user();
+        abort_unless($user instanceof User, 403);
+        $sectionIds = app(StudentAccess::class)->sectionIds($user);
+
+        if ($sectionIds !== null) {
+            $query->whereIn('id', $sectionIds);
+        }
+
+        return $query->get();
+    }
+
+    private function guardReportAccess(?int $studentId, ?int $sectionId): void
+    {
+        $user = Auth::user();
+        abort_unless($user instanceof User, 403);
+        $access = app(StudentAccess::class);
+
+        if ($studentId) {
+            abort_unless($access->allowsStudent($user, $studentId), 403);
+        }
+
+        if ($sectionId) {
+            abort_unless($access->allowsSection($user, $sectionId), 403);
+        }
+    }
+
+    private function applyStudentAccess($query, string $column): void
+    {
+        $user = Auth::user();
+        abort_unless($user instanceof User, 403);
+        $studentIds = app(StudentAccess::class)->studentIds($user);
+
+        if ($studentIds !== null) {
+            $query->whereIn($column, $studentIds);
+        }
     }
 
     private function sectionsForYear(?int $year)

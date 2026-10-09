@@ -4,7 +4,7 @@
 
 @section('content')
 @php
-    $templateFormVisible = $editTemplate !== null || old('nombre') !== null || old('categorias.0.nombre') !== null;
+    $templateFormVisible = $canManageAcademicData && ($editTemplate !== null || old('nombre') !== null || old('categorias.0.nombre') !== null);
     $templateRows = old('categorias', $editTemplate
         ? $editTemplate->items->map(fn ($item) => [
             'nombre' => $item->nombre,
@@ -35,9 +35,9 @@
                 <a href="{{ \App\Support\AppUrl::route('subjects.index') }}" class="btn btn-outline-primary btn-sm">
                     <i class="fas fa-book-open mr-1"></i>Materias
                 </a>
-                <button class="btn btn-success btn-sm" type="button" data-toggle="modal" data-target="#collectorTemplateModal">
+                @if ($canManageAcademicData)<button class="btn btn-success btn-sm" type="button" data-toggle="modal" data-target="#collectorTemplateModal">
                     <i class="fas fa-plus mr-1"></i>{{ $editTemplate ? 'Editar plantilla' : 'Nueva plantilla' }}
-                </button>
+                </button>@endif
             </div>
         </div>
     </div>
@@ -110,8 +110,9 @@
                                 data-categories="{{ $summary }}">
                                 <i class="fas fa-eye"></i>
                             </button>
-                            <a href="{{ \App\Support\AppUrl::route('collector-templates.index') }}?edit_template={{ $template->id }}" class="btn btn-xs btn-warning"><i class="fas fa-pen"></i></a>
+                            @if ($canManageAcademicData)<a href="{{ \App\Support\AppUrl::route('collector-templates.index') }}?edit_template={{ $template->id }}" class="btn btn-xs btn-warning"><i class="fas fa-pen"></i></a>
                             <form method="POST" action="{{ \App\Support\AppUrl::route('collector-templates.destroy', ['template' => $template->id]) }}" data-swal-confirm="true" data-swal-title="Desactivar plantilla" data-swal-text="La plantilla quedara inactiva y ya no podra asignarse a nuevas materias." data-swal-confirm-label="Si, desactivar">@csrf @method('DELETE')<button class="btn btn-xs btn-danger"><i class="fas fa-user-slash"></i></button></form>
+                            @endif
                         </td>
                     </tr>
                 @empty

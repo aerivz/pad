@@ -3,8 +3,8 @@
 namespace App\Models;
 
 use App\Models\Concerns\ResolvesMediaUrls;
-use Illuminate\Database\Eloquent\Factories\HasFactory;
 use Illuminate\Database\Eloquent\Builder;
+use Illuminate\Database\Eloquent\Factories\HasFactory;
 use Illuminate\Database\Eloquent\Relations\BelongsTo;
 use Illuminate\Database\Eloquent\Relations\HasOne;
 use Illuminate\Foundation\Auth\User as Authenticatable;
@@ -17,6 +17,7 @@ class User extends Authenticatable
     protected $table = 'usuarios';
 
     public const CREATED_AT = 'created_at';
+
     public const UPDATED_AT = null;
 
     protected $fillable = [
@@ -24,6 +25,7 @@ class User extends Authenticatable
         'nombre_usuario',
         'email',
         'password_hash',
+        'must_change_password',
         'nombres',
         'apellidos',
         'avatar',
@@ -43,6 +45,7 @@ class User extends Authenticatable
     {
         return [
             'activo' => 'boolean',
+            'must_change_password' => 'boolean',
         ];
     }
 
@@ -66,11 +69,16 @@ class User extends Authenticatable
         return $this->hasOne(Teacher::class, 'usuario_id');
     }
 
+    public function guardian(): HasOne
+    {
+        return $this->hasOne(Guardian::class, 'usuario_id');
+    }
+
     public function allowedMenuKeys(): array
     {
         $role = $this->relationLoaded('role') ? $this->role : $this->role()->with('menus')->first();
 
-        if (! $role) {
+        if (! $role || ! $role->activo) {
             return [];
         }
 
