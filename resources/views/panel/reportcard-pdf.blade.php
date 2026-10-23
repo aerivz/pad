@@ -2,7 +2,7 @@
 <html lang="es">
 <head>
     <meta charset="UTF-8">
-    <title>Boletines anuales</title>
+    <title>Boletines de notas</title>
     <style>
         @page {
             margin: 10px 12px 14px;
@@ -196,6 +196,7 @@
                     <td class="brand-center">
                         <div class="report-title">Academic Report {{ $report['student']['academic_year'] - 1 }} - {{ $report['student']['academic_year'] }}</div>
                         <div class="report-subtitle">{{ $report['student']['section_name'] }}</div>
+                        <div>{{ $periodLabel ?? ($report['is_annual'] ? 'Anual' : 'Período seleccionado') }}</div>
                     </td>
                     <td class="brand-right">
                         <div class="crest">ACI</div>
@@ -218,52 +219,62 @@
                 <thead>
                     <tr>
                         <th rowspan="2" class="subject-col">Subjects</th>
-                        <th colspan="4">First Term</th>
-                        <th colspan="4">Second Term</th>
-                        <th rowspan="2">Semestral Eval.</th>
-                        <th colspan="4">Third Term</th>
-                        <th colspan="4">Fourth Term</th>
-                        <th rowspan="2">Final Eval.</th>
-                        <th rowspan="2">Final Conduct</th>
-                        <th rowspan="2">Final Period</th>
+                        @foreach ($report['terms'] as $term)
+                            <th colspan="3">{{ $term->nombre }}</th>
+                            @if ((int) $term->numero === 2)<th rowspan="2">Semestral Eval.</th>@endif
+                            @if ((int) $term->numero === 4)<th rowspan="2">Final Eval.</th>@endif
+                        @endforeach
+                        @if ($report['is_annual'])<th rowspan="2">Final Period</th>@endif
                     </tr>
                     <tr>
-                        @for ($term = 1; $term <= 4; $term++)
+                        @foreach ($report['terms'] as $term)
                             <th>P1</th>
                             <th>P2</th>
                             <th>Avg</th>
-                            <th>Cond</th>
-                        @endfor
+                        @endforeach
                     </tr>
                 </thead>
                 <tbody>
                     @foreach ($report['subjects'] as $subject)
                         <tr>
                             <td class="subject-col">{{ $subject['subject'] }}</td>
-                            @for ($term = 1; $term <= 4; $term++)
-                                @php($termData = $subject['terms'][$term] ?? null)
+                            @foreach ($report['terms'] as $term)
+                                @php($termData = $subject['terms'][$term->numero] ?? null)
                                 <td class="score {{ ($termData['progress_1'] ?? null) === null ? 'empty' : '' }}">{{ $termData['progress_1'] ?? '-' }}</td>
                                 <td class="score {{ ($termData['progress_2'] ?? null) === null ? 'empty' : '' }}">{{ $termData['progress_2'] ?? '-' }}</td>
                                 <td class="score {{ ($termData['period_average'] ?? null) === null ? 'empty' : '' }}">{{ $termData['period_average'] ?? '-' }}</td>
-                                <td class="score {{ ($termData['conduct'] ?? null) === null ? 'empty' : '' }}">{{ $termData['conduct'] ?? '-' }}</td>
-                                @if ($term === 2)
+                                @if ((int) $term->numero === 2)
                                     <td class="score {{ $subject['semester_evaluation'] === null ? 'empty' : '' }}">{{ $subject['semester_evaluation'] ?? '-' }}</td>
                                 @endif
-                                @if ($term === 4)
+                                @if ((int) $term->numero === 4)
                                     <td class="score {{ $subject['final_evaluation'] === null ? 'empty' : '' }}">{{ $subject['final_evaluation'] ?? '-' }}</td>
-                                    <td class="score {{ $subject['final_conduct'] === null ? 'empty' : '' }}">{{ $subject['final_conduct'] ?? '-' }}</td>
-                                    <td class="score {{ $subject['final_period'] === null ? 'empty' : '' }}">{{ $subject['final_period'] ?? '-' }}</td>
                                 @endif
-                            @endfor
+                            @endforeach
+                            @if ($report['is_annual'])<td class="score {{ $subject['final_period'] === null ? 'empty' : '' }}">{{ $subject['final_period'] ?? '-' }}</td>@endif
                         </tr>
                     @endforeach
+                    <tr>
+                        <td class="subject-col">Conduct</td>
+                        @foreach ($report['terms'] as $term)
+                            <td colspan="3" class="score">{{ $report['homeroom'][$term->numero]['conduct'] ?? '-' }}</td>
+                            @if ((int) $term->numero === 2)<td></td>@endif
+                            @if ((int) $term->numero === 4)<td></td>@endif
+                        @endforeach
+                        @if ($report['is_annual'])<td class="score">{{ $report['final_conduct'] ?? '-' }}</td>@endif
+                    </tr>
                 </tbody>
             </table>
 
             <table class="comment-box">
                 <tr>
                     <td class="comment-label">Teacher's comment:</td>
-                    <td class="comment-text">{{ $report['teacher_comment'] }}</td>
+                    <td class="comment-text">
+                        @forelse ($report['teacher_comments'] as $term => $comment)
+                            <strong>Trimestre {{ $term }}:</strong> {{ $comment }}@if (! $loop->last)<br>@endif
+                        @empty
+                            Sin comentarios para el período mostrado.
+                        @endforelse
+                    </td>
                 </tr>
             </table>
 

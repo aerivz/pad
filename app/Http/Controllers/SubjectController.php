@@ -18,9 +18,10 @@ class SubjectController extends Controller
                 'string',
                 Rule::exists('plantillas_colector', 'codigo')->where(fn ($query) => $query->where('activo', true)),
             ],
+            'es_electiva' => ['nullable', 'boolean'],
         ]);
 
-        Subject::create($data);
+        Subject::create($data + ['es_electiva' => $request->boolean('es_electiva')]);
 
         return redirect('/pad/materias')->with('status', 'Materia creada correctamente.');
     }
@@ -34,9 +35,10 @@ class SubjectController extends Controller
                 'string',
                 Rule::exists('plantillas_colector', 'codigo')->where(fn ($query) => $query->where('activo', true)),
             ],
+            'es_electiva' => ['nullable', 'boolean'],
         ]);
 
-        $subject->update($data);
+        $subject->update($data + ['es_electiva' => $request->boolean('es_electiva')]);
 
         return redirect('/pad/materias')->with('status', 'Materia actualizada correctamente.');
     }

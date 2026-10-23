@@ -39,6 +39,12 @@ class StudentAccess
                             ->select('seccion_id')
                             ->where('activo', true)
                             ->where('profesor_id', $teacherId);
+                    })->orWhereIn('a.id', function ($students) use ($teacherId): void {
+                        $students->from('asignacion_alumno as aa')
+                            ->join('asignaciones as ag', 'ag.id', '=', 'aa.asignacion_id')
+                            ->select('aa.alumno_id')
+                            ->where('ag.activo', true)
+                            ->where('ag.profesor_id', $teacherId);
                     });
                 })
                 ->pluck('a.id')

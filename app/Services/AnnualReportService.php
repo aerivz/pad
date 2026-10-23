@@ -15,10 +15,11 @@ class AnnualReportService
             ->join('secciones as s', function ($join) {
                 $join->on('s.id', '=', 'a.seccion_id')->where('s.activo', true);
             })
+            ->leftJoin('profesores as tp', 'tp.id', '=', 's.titular_profesor_id')
             ->where('a.activo', true)
             ->where('a.id', $studentId)
             ->when($sectionId, fn ($query) => $query->where('s.id', $sectionId))
-            ->selectRaw("a.id, a.seccion_id, a.nombres, a.apellidos, CONCAT(a.nombres, ' ', a.apellidos) as full_name, CONCAT(s.grado, ' ', s.nombre) as section_name, s.anio_escolar")
+            ->selectRaw("a.id, a.seccion_id, a.nombres, a.apellidos, CONCAT(a.nombres, ' ', a.apellidos) as full_name, CONCAT(s.grado, ' ', s.nombre) as section_name, s.anio_escolar, TRIM(CONCAT(COALESCE(tp.nombres, ''), ' ', COALESCE(tp.apellidos, ''))) as titular_name")
             ->first();
 
         if (! $student) {
@@ -37,7 +38,16 @@ class AnnualReportService
             ->leftJoin('profesores as p', function ($join) {
                 $join->on('p.id', '=', 'ag.profesor_id')->where('p.activo', true);
             })
-            ->where('ag.seccion_id', $student->seccion_id)
+            ->where(function ($query) use ($studentId, $student) {
+                $query->where(function ($regular) use ($student) {
+                    $regular->where('m.es_electiva', false)->where('ag.seccion_id', $student->seccion_id);
+                })
+                    ->orWhereExists(function ($subQuery) use ($studentId) {
+                        $subQuery->from('asignacion_alumno as aa')
+                            ->whereColumn('aa.asignacion_id', 'ag.id')
+                            ->where('aa.alumno_id', $studentId);
+                    });
+            })
             ->where('ag.anio_escolar', $student->anio_escolar)
             ->selectRaw("ag.id, ag.profesor_id, m.nombre as subject_name, TRIM(CONCAT(COALESCE(p.nombres, ''), ' ', COALESCE(p.apellidos, ''))) as teacher_name")
             ->orderBy('m.nombre')
@@ -55,13 +65,12 @@ class AnnualReportService
             ->groupBy('asignacion_id')
             ->map(fn (Collection $rows) => $rows->keyBy('trimestre_id'));
 
-        $conductRows = DB::table('conducta_alumnos')
+        $homeroomRows = DB::table('evaluaciones_titular')
             ->where('activo', true)
             ->where('alumno_id', $studentId)
-            ->whereIn('asignacion_id', $assignments->pluck('id'))
-            ->get(['asignacion_id', 'trimestre_id', 'valor'])
-            ->groupBy('asignacion_id')
-            ->map(fn (Collection $rows) => $rows->keyBy('trimestre_id'));
+            ->where('seccion_id', $student->seccion_id)
+            ->get(['trimestre_id', 'conducta', 'comentario'])
+            ->keyBy('trimestre_id');
 
         $periodExamRows = StudentPeriodExam::query()
             ->where('activo', true)
@@ -71,30 +80,17 @@ class AnnualReportService
             ->groupBy('asignacion_id')
             ->map(fn (Collection $rows) => $rows->keyBy('tipo'));
 
-        $subjects = $assignments->map(function ($assignment) use ($trimesters, $finalRows, $conductRows, $periodExamRows) {
+        $subjects = $assignments->map(function ($assignment) use ($trimesters, $finalRows, $periodExamRows) {
             $trimesterData = [];
-            $periodAverages = [];
-            $conductAverages = [];
 
             foreach ($trimesters as $trimester) {
                 $final = $finalRows->get($assignment->id)?->get($trimester->id);
-                $conduct = $conductRows->get($assignment->id)?->get($trimester->id);
                 $periodAverage = $final->nota_final ?? null;
-                $conductValue = $conduct->valor ?? null;
-
-                if ($periodAverage !== null) {
-                    $periodAverages[] = (float) $periodAverage;
-                }
-
-                if ($conductValue !== null) {
-                    $conductAverages[] = (float) $conductValue;
-                }
 
                 $trimesterData[$trimester->numero] = [
                     'progress_1' => $final->progress_1 ?? null,
                     'progress_2' => $final->progress_2 ?? null,
                     'period_average' => $periodAverage,
-                    'conduct' => $conductValue,
                 ];
             }
 
@@ -107,7 +103,6 @@ class AnnualReportService
                 'terms' => $trimesterData,
                 'semester_evaluation' => $semesterEvaluation,
                 'final_evaluation' => $finalEvaluation,
-                'final_conduct' => $this->averageValues($conductAverages),
                 'final_period' => $this->weightedAnnualGrade([
                     't1' => $trimesterData[1]['period_average'] ?? null,
                     't2' => $trimesterData[2]['period_average'] ?? null,
@@ -119,7 +114,15 @@ class AnnualReportService
             ];
         })->values();
 
-        $teacherName = collect($subjects)->pluck('teacher')->filter()->first() ?: 'Sin asignar';
+        $teacherName = $student->titular_name ?: 'Sin titular asignado';
+        $homeroomByTerm = $trimesters->mapWithKeys(function ($trimester) use ($homeroomRows) {
+            $evaluation = $homeroomRows->get($trimester->id);
+
+            return [(int) $trimester->numero => [
+                'conduct' => $evaluation->conducta ?? null,
+                'comment' => $evaluation->comentario ?? null,
+            ]];
+        });
 
         return [
             'student' => [
@@ -132,7 +135,13 @@ class AnnualReportService
             'teacher_name' => $teacherName,
             'terms' => $trimesters->keyBy('numero'),
             'subjects' => $subjects,
-            'teacher_comment' => 'Hemos finalizado un ciclo academico con buen avance. Sigue esforzandote y manteniendo constancia en cada materia.',
+            'homeroom' => $homeroomByTerm,
+            'final_conduct' => $this->averageValues($homeroomByTerm->pluck('conduct')),
+            'teacher_comments' => $homeroomByTerm
+                ->filter(fn (array $evaluation) => filled($evaluation['comment']))
+                ->map(fn (array $evaluation) => $evaluation['comment'])
+                ->all(),
+            'is_annual' => true,
             'signatures' => [
                 'headmaster' => 'Dirección Academica',
                 'teacher' => $teacherName,
@@ -165,6 +174,7 @@ class AnnualReportService
 
         return Pdf::loadView('panel.reportcard-pdf', [
             'reports' => collect([$report]),
+            'periodLabel' => 'Anual',
         ])->setPaper('legal', 'landscape')->output();
     }
 

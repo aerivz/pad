@@ -4,7 +4,6 @@ namespace App\Http\Controllers;
 
 use App\Models\CollectorCategory;
 use App\Models\StudentCategoryGrade;
-use App\Models\StudentConduct;
 use App\Models\StudentPeriodExam;
 use App\Models\User;
 use App\Services\GradeCollectorImportService;
@@ -93,12 +92,11 @@ class EvaluationController extends Controller
             'grades.*.*.nota_2' => ['nullable', 'numeric', 'min:0', 'max:100'],
             'grades.*.*.nota_3' => ['nullable', 'numeric', 'min:0', 'max:100'],
             'grades.*.*.nota_4' => ['nullable', 'numeric', 'min:0', 'max:100'],
-            'conduct' => ['nullable', 'array'],
-            'conduct.*' => ['nullable', 'numeric', 'min:0', 'max:100'],
             'period_exam' => ['nullable', 'array'],
             'period_exam.*' => ['nullable', 'numeric', 'min:0', 'max:100'],
         ]);
         $this->guardAssignmentEditAccess((int) $data['asignacion_id']);
+        $allowedStudentIds = $this->assignmentStudentIds((int) $data['asignacion_id']);
 
         $periodExamType = $this->resolvePeriodExamType($data);
 
@@ -109,8 +107,12 @@ class EvaluationController extends Controller
             ->get()
             ->keyBy('id');
 
-        DB::transaction(function () use ($data, $categories, $periodExamType): void {
+        DB::transaction(function () use ($data, $categories, $periodExamType, $allowedStudentIds): void {
             foreach (($data['grades'] ?? []) as $studentId => $studentCategories) {
+                if (! in_array((int) $studentId, $allowedStudentIds, true)) {
+                    continue;
+                }
+
                 foreach ($studentCategories as $categoryId => $notes) {
                     $category = $categories->get((int) $categoryId);
 
@@ -142,32 +144,12 @@ class EvaluationController extends Controller
                 }
             }
 
-            foreach (($data['conduct'] ?? []) as $studentId => $value) {
-                $payload = [
-                    'valor' => $this->gradeCollectorService()->nullableNumber($value),
-                    'activo' => $value !== null && $value !== '',
-                ];
-
-                $conduct = StudentConduct::query()
-                    ->where('asignacion_id', $data['asignacion_id'])
-                    ->where('trimestre_id', $data['trimestre_id'])
-                    ->where('alumno_id', $studentId)
-                    ->first();
-
-                if ($conduct) {
-                    $conduct->update($payload);
-                } elseif ($payload['activo']) {
-                    StudentConduct::query()->create([
-                        'asignacion_id' => $data['asignacion_id'],
-                        'trimestre_id' => $data['trimestre_id'],
-                        'alumno_id' => $studentId,
-                        ...$payload,
-                    ]);
-                }
-            }
-
             if ($periodExamType !== null) {
                 foreach (($data['period_exam'] ?? []) as $studentId => $value) {
+                    if (! in_array((int) $studentId, $allowedStudentIds, true)) {
+                        continue;
+                    }
+
                     $numericValue = $this->gradeCollectorService()->nullableNumber($value);
                     $payload = [
                         'valor' => $numericValue,
@@ -222,13 +204,11 @@ class EvaluationController extends Controller
         }
 
         $message = sprintf(
-            'Importacion lista. Categorias nuevas: %d, actualizadas: %d, notas nuevas: %d, actualizadas: %d, conducta nueva: %d, conducta actualizada: %d, alumnos vinculados: %d.',
+            'Importacion lista. Categorias nuevas: %d, actualizadas: %d, notas nuevas: %d, actualizadas: %d, alumnos vinculados: %d.',
             $summary['created_categories'],
             $summary['updated_categories'],
             $summary['created_grades'],
             $summary['updated_grades'],
-            $summary['created_conduct'],
-            $summary['updated_conduct'],
             $summary['matched_students']
         );
 
@@ -475,5 +455,25 @@ class EvaluationController extends Controller
             ->exists();
 
         abort_unless($allowed, 403);
+    }
+
+    private function assignmentStudentIds(int $assignmentId): array
+    {
+        $selected = DB::table('asignacion_alumno')
+            ->where('asignacion_id', $assignmentId)
+            ->pluck('alumno_id');
+
+        if ($selected->isNotEmpty()) {
+            return $selected->map(fn ($id) => (int) $id)->all();
+        }
+
+        $sectionId = DB::table('asignaciones')->where('id', $assignmentId)->value('seccion_id');
+
+        return DB::table('alumnos')
+            ->where('seccion_id', $sectionId)
+            ->where('activo', true)
+            ->pluck('id')
+            ->map(fn ($id) => (int) $id)
+            ->all();
     }
 }

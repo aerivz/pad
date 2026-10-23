@@ -4,6 +4,7 @@ namespace App\Models;
 
 use Illuminate\Database\Eloquent\Builder;
 use Illuminate\Database\Eloquent\Model;
+use Illuminate\Database\Eloquent\Relations\BelongsToMany;
 
 class Assignment extends Model
 {
@@ -29,5 +30,10 @@ class Assignment extends Model
     public function scopeActive(Builder $query): Builder
     {
         return $query->where('activo', true);
+    }
+
+    public function students(): BelongsToMany
+    {
+        return $this->belongsToMany(Student::class, 'asignacion_alumno', 'asignacion_id', 'alumno_id');
     }
 }

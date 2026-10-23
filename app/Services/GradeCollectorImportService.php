@@ -4,7 +4,6 @@ namespace App\Services;
 
 use App\Models\CollectorCategory;
 use App\Models\StudentCategoryGrade;
-use App\Models\StudentConduct;
 use Illuminate\Http\UploadedFile;
 use Illuminate\Support\Collection;
 use Illuminate\Support\Facades\DB;
@@ -16,8 +15,7 @@ class GradeCollectorImportService
 {
     public function __construct(
         private readonly GradeCollectorService $collectorService,
-    ) {
-    }
+    ) {}
 
     public function import(UploadedFile $file, int $assignmentId, int $trimesterId, bool $resetBeforeImport = false): array
     {
@@ -33,8 +31,13 @@ class GradeCollectorImportService
             throw new RuntimeException('Asignacion no encontrada para importacion.');
         }
 
+        $hasSelectedStudents = DB::table('asignacion_alumno')->where('asignacion_id', $assignmentId)->exists();
         $students = DB::table('alumnos')
-            ->where('seccion_id', $assignment->seccion_id)
+            ->when(
+                $hasSelectedStudents,
+                fn ($query) => $query->whereIn('id', DB::table('asignacion_alumno')->where('asignacion_id', $assignmentId)->select('alumno_id')),
+                fn ($query) => $query->where('seccion_id', $assignment->seccion_id)
+            )
             ->where('activo', true)
             ->orderBy('apellidos')
             ->orderBy('nombres')
@@ -63,8 +66,6 @@ class GradeCollectorImportService
             $updatedCategories = 0;
             $createdGrades = 0;
             $updatedGrades = 0;
-            $createdConduct = 0;
-            $updatedConduct = 0;
             $studentHits = [];
             $errors = [];
 
@@ -103,11 +104,13 @@ class GradeCollectorImportService
 
                 if (! isset($studentMap[$normalizedStudent])) {
                     $errors[] = 'Alumno no encontrado en seccion: '.$row['student'];
+
                     continue;
                 }
 
                 if ($studentMap[$normalizedStudent] === null) {
                     $errors[] = 'Alumno ambiguo en seccion: '.$row['student'];
+
                     continue;
                 }
 
@@ -119,6 +122,7 @@ class GradeCollectorImportService
 
                     if (! $category) {
                         $errors[] = 'Categoria no encontrada en importacion: '.$categoryName;
+
                         continue;
                     }
 
@@ -152,31 +156,6 @@ class GradeCollectorImportService
                     }
                 }
 
-                if (array_key_exists('conduct', $row)) {
-                    $conductValue = $this->collectorService->nullableNumber($row['conduct']);
-                    $conduct = StudentConduct::query()
-                        ->where('asignacion_id', $assignmentId)
-                        ->where('trimestre_id', $trimesterId)
-                        ->where('alumno_id', $student->id)
-                        ->first();
-
-                    if ($conduct) {
-                        $conduct->update([
-                            'valor' => $conductValue,
-                            'activo' => true,
-                        ]);
-                        $updatedConduct++;
-                    } else {
-                        StudentConduct::query()->create([
-                            'asignacion_id' => $assignmentId,
-                            'trimestre_id' => $trimesterId,
-                            'alumno_id' => $student->id,
-                            'valor' => $conductValue,
-                            'activo' => true,
-                        ]);
-                        $createdConduct++;
-                    }
-                }
             }
 
             $errors = array_values(array_unique($errors));
@@ -190,8 +169,6 @@ class GradeCollectorImportService
                 'updated_categories' => $updatedCategories,
                 'created_grades' => $createdGrades,
                 'updated_grades' => $updatedGrades,
-                'created_conduct' => $createdConduct,
-                'updated_conduct' => $updatedConduct,
                 'matched_students' => count($studentHits),
                 'errors' => $errors,
             ];
@@ -405,7 +382,7 @@ class GradeCollectorImportService
 
     private function xlsxRows(string $path): array
     {
-        $zip = new ZipArchive();
+        $zip = new ZipArchive;
 
         if ($zip->open($path) !== true) {
             throw new RuntimeException('No se pudo abrir archivo XLSX.');
@@ -420,7 +397,7 @@ class GradeCollectorImportService
             throw new RuntimeException('No se pudo leer hoja XLSX.');
         }
 
-        $dom = new \DOMDocument();
+        $dom = new \DOMDocument;
         $dom->loadXML($sheetXml);
         $xpath = new \DOMXPath($dom);
         $xpath->registerNamespace('main', 'http://schemas.openxmlformats.org/spreadsheetml/2006/main');
@@ -452,7 +429,7 @@ class GradeCollectorImportService
             return [];
         }
 
-        $dom = new \DOMDocument();
+        $dom = new \DOMDocument;
         $dom->loadXML($sharedXml);
         $xpath = new \DOMXPath($dom);
         $xpath->registerNamespace('main', 'http://schemas.openxmlformats.org/spreadsheetml/2006/main');
@@ -579,6 +556,7 @@ class GradeCollectorImportService
 
                 if (! isset($map[$variant])) {
                     $map[$variant] = $student;
+
                     continue;
                 }
 
@@ -609,10 +587,6 @@ class GradeCollectorImportService
             ->where('trimestre_id', $trimesterId)
             ->update(['activo' => false]);
 
-        StudentConduct::query()
-            ->where('asignacion_id', $assignmentId)
-            ->where('trimestre_id', $trimesterId)
-            ->update(['activo' => false]);
     }
 
     private function normalizeText(string $value): string

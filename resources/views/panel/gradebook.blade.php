@@ -184,7 +184,7 @@
                         @endif
                     </div>
                 @else
-                    <div class="alert alert-info m-3">Crea categorias primero. Luego podras capturar notas y conducta por alumno.</div>
+                    <div class="alert alert-info m-3">Crea categorías primero. Luego podrás capturar las notas por alumno.</div>
                 @endif
             @elseif ($selectedPeriodType === 'trimester')
                 <form method="POST" action="/pad/notas/calificaciones">
@@ -208,7 +208,6 @@
                                             <th rowspan="2" class="text-center">Progress 1</th>
                                             <th rowspan="2" class="text-center">Progress 2</th>
                                             <th rowspan="2" class="text-center">Report Card</th>
-                                            <th rowspan="2" class="text-center">Conducta</th>
                                         </tr>
                                         <tr>
                                             @foreach ($gradeBoard['categories'] as $category)
@@ -266,9 +265,6 @@
                                             <td class="final-cell">{{ $row['progress_1'] }}</td>
                                             <td class="final-cell">{{ $row['progress_2'] }}</td>
                                             <td class="final-cell">{{ $row['report_card'] ?? '-' }}</td>
-                                            <td class="text-center">
-                                                <input type="number" step="0.01" min="0" max="100" name="conduct[{{ $row['id'] }}]" class="form-control form-control-sm grade-input" value="{{ old('conduct.'.$row['id'], $row['conducta'] ?? '') }}" @disabled($readOnlyGradeBook)>
-                                            </td>
                                         </tr>
                                     @endforeach
                                     </tbody>
@@ -371,6 +367,42 @@
                 </div>
         </div>
     </div>
+@endif
+
+@if ($selectedPeriodType === 'trimester' && $homeroomBoard['rows']->isNotEmpty())
+<div class="card maint-card">
+    <div class="card-header">
+        <h3 class="card-title">Conducta y comentario del titular · {{ $selectedPeriodLabel }}</h3>
+        <div class="card-tools text-muted small">Titular: {{ $homeroomBoard['teacher_name'] }}</div>
+    </div>
+    <div class="card-body p-0">
+        <form method="POST" action="{{ \App\Support\AppUrl::route('gradebook.homeroom.sync') }}">
+            @csrf
+            <input type="hidden" name="seccion_id" value="{{ $selectedSectionId }}">
+            <input type="hidden" name="trimestre_id" value="{{ $selectedTrimesterId }}">
+            <input type="hidden" name="periodo" value="{{ $selectedPeriod }}">
+            <div class="table-responsive">
+                <table class="table table-bordered table-sm mb-0">
+                    <thead class="bg-light"><tr><th>Alumno</th><th style="width:150px;">Conducta</th><th>Comentario trimestral</th></tr></thead>
+                    <tbody>
+                    @foreach ($homeroomBoard['rows'] as $row)
+                        <tr>
+                            <td>{{ $row['nombre'] }}</td>
+                            <td><input type="number" step="0.01" min="0" max="100" name="evaluations[{{ $row['id'] }}][conducta]" class="form-control form-control-sm" value="{{ old('evaluations.'.$row['id'].'.conducta', $row['conducta']) }}" @disabled(! $homeroomBoard['can_edit'])></td>
+                            <td><textarea name="evaluations[{{ $row['id'] }}][comentario]" class="form-control form-control-sm" rows="2" maxlength="2000" @disabled(! $homeroomBoard['can_edit'])>{{ old('evaluations.'.$row['id'].'.comentario', $row['comentario']) }}</textarea></td>
+                        </tr>
+                    @endforeach
+                    </tbody>
+                </table>
+            </div>
+            @if ($homeroomBoard['can_edit'])
+                <div class="p-3 border-top"><button class="btn btn-success btn-sm">Guardar conducta y comentarios</button></div>
+            @else
+                <div class="alert alert-info m-3 mb-3">Solo el maestro titular de esta sección puede modificar estos datos.</div>
+            @endif
+        </form>
+    </div>
+</div>
 @endif
 
 @if ($canEditGradeBook)
@@ -501,7 +533,7 @@
                     </div>
                     <div class="form-group form-check">
                         <input type="checkbox" class="form-check-input" id="limpiar_antes_importar" name="limpiar_antes_importar" value="1">
-                        <label class="form-check-label" for="limpiar_antes_importar">Desactivar categorias, notas y conducta previas antes de importar</label>
+                        <label class="form-check-label" for="limpiar_antes_importar">Desactivar categorías y notas previas antes de importar</label>
                     </div>
                     <div class="text-right">
                         <button type="button" class="btn btn-default btn-sm" data-dismiss="modal">Cancelar</button>

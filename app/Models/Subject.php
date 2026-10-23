@@ -15,12 +15,14 @@ class Subject extends Model
         'nombre',
         'plantilla_colector',
         'activo',
+        'es_electiva',
     ];
 
     protected function casts(): array
     {
         return [
             'activo' => 'boolean',
+            'es_electiva' => 'boolean',
         ];
     }
 

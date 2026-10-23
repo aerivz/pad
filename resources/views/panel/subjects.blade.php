@@ -78,6 +78,7 @@
                             <button type="button" class="btn btn-xs btn-info subject-view-button"
                                 data-name="{{ $subject->nombre }}"
                                 data-template="{{ $categoryTemplates->get($subject->plantilla_colector)['name'] ?? 'Sin plantilla' }}"
+                                data-elective="{{ $subject->es_electiva ? 'Sí' : 'No' }}"
                                 data-teachers="{{ $subject->total_profesores }}"
                                 data-sections="{{ $subject->total_secciones }}"
                                 data-average="{{ $subject->promedio ?? 'Sin promedio' }}">
@@ -124,6 +125,13 @@
                                 @endforeach
                             </select>
                         </div>
+                        <div class="col-md-12 form-group">
+                            <div class="custom-control custom-checkbox">
+                                <input type="hidden" name="es_electiva" value="0">
+                                <input type="checkbox" name="es_electiva" value="1" class="custom-control-input" id="subjectElective" @checked(old('es_electiva', $editSubject->es_electiva ?? false))>
+                                <label class="custom-control-label" for="subjectElective">Materia electiva con alumnos seleccionados de distintas secciones</label>
+                            </div>
+                        </div>
                     </div>
                     <button class="btn btn-primary btn-sm">{{ $editSubject ? 'Guardar cambios' : 'Agregar materia' }}</button>
                     @if ($editSubject)<a href="{{ \App\Support\AppUrl::route('subjects.index') }}" class="btn btn-default btn-sm">Cancelar</a>@endif
@@ -144,6 +152,7 @@
                 <ul class="maint-modal-list">
                     <li><strong>Materia:</strong> <span data-subject-field="name"></span></li>
                     <li><strong>Plantilla:</strong> <span data-subject-field="template"></span></li>
+                    <li><strong>Electiva:</strong> <span data-subject-field="elective"></span></li>
                     <li><strong>Profesores:</strong> <span data-subject-field="teachers"></span></li>
                     <li><strong>Secciones:</strong> <span data-subject-field="sections"></span></li>
                     <li><strong>Promedio:</strong> <span data-subject-field="average"></span></li>
@@ -165,6 +174,7 @@
             button.addEventListener('click', function () {
                 document.querySelector('[data-subject-field="name"]').textContent = button.dataset.name;
                 document.querySelector('[data-subject-field="template"]').textContent = button.dataset.template;
+                document.querySelector('[data-subject-field="elective"]').textContent = button.dataset.elective;
                 document.querySelector('[data-subject-field="teachers"]').textContent = button.dataset.teachers;
                 document.querySelector('[data-subject-field="sections"]').textContent = button.dataset.sections;
                 document.querySelector('[data-subject-field="average"]').textContent = button.dataset.average;

@@ -179,8 +179,17 @@ class PanelController extends Controller
             'sectionsCatalog' => Section::active()->orderBy('anio_escolar', 'desc')->orderBy('grado')->orderBy('nombre')->get(),
             'subjectsCatalog' => Subject::active()->orderBy('nombre')->get(),
             'teachersCatalog' => Teacher::active()->orderBy('nombres')->orderBy('apellidos')->get(),
+            'assignmentStudentsCatalog' => DB::table('alumnos as a')
+                ->join('secciones as s', 's.id', '=', 'a.seccion_id')
+                ->where('a.activo', true)
+                ->where('s.activo', true)
+                ->selectRaw("a.id, a.seccion_id, a.nombres, a.apellidos, s.anio_escolar, CONCAT(s.grado, ' ', s.nombre) as seccion")
+                ->orderByDesc('s.anio_escolar')
+                ->orderBy('s.grado')
+                ->orderBy('a.apellidos')
+                ->get(),
             'assignmentYears' => $this->assignmentYears(),
-            'editAssignment' => request()->filled('edit_assignment') ? Assignment::active()->find(request()->integer('edit_assignment')) : null,
+            'editAssignment' => request()->filled('edit_assignment') ? Assignment::active()->with('students:id')->find(request()->integer('edit_assignment')) : null,
         ]);
     }
 
@@ -224,6 +233,9 @@ class PanelController extends Controller
             : $this->buildPeriodExamBoard($selectedAssignmentId, $selectedPeriodMeta['exam_type']);
         $canEditGradeBook = $selectedAssignmentId ? $this->canEditAssignment($selectedAssignmentId) : false;
         $canViewGradeBook = $selectedAssignmentId ? $this->canViewAssignment($selectedAssignmentId) : false;
+        $homeroomBoard = $selectedPeriodMeta['type'] === 'trimester'
+            ? $this->buildHomeroomEvaluationBoard($selectedSectionId, $selectedTrimesterId)
+            : ['rows' => collect(), 'teacher_name' => null, 'can_edit' => false];
 
         return view('panel.gradebook', [
             ...$this->baseData(),
@@ -249,6 +261,7 @@ class PanelController extends Controller
             'canEditGradeBook' => $canEditGradeBook,
             'canViewGradeBook' => $canViewGradeBook,
             'periodExamMeta' => $selectedPeriodMeta['type'] === 'exam' ? $selectedPeriodMeta : null,
+            'homeroomBoard' => $homeroomBoard,
         ]);
     }
 
@@ -257,6 +270,9 @@ class PanelController extends Controller
         $trimesters = DB::table('trimestres')->orderBy('numero')->get();
         $selectedPeriod = $this->selectedPeriodValue($trimesters, true);
         $selectedPeriodMeta = $this->selectedPeriodMeta($selectedPeriod, $trimesters);
+        $maxTrimesterNumber = $selectedPeriod === ''
+            ? null
+            : (int) ($trimesters->firstWhere('id', $selectedPeriodMeta['trimester_id'])?->numero ?? 1);
         $filters = [
             'seccion_id' => request()->integer('seccion_id'),
             'alumno_id' => request()->integer('alumno_id'),
@@ -268,8 +284,7 @@ class PanelController extends Controller
         return view('panel.reportcard', [
             ...$this->baseData(),
             'activeMenu' => 'reportcard',
-            'subjectColumns' => $this->subjectColumns(),
-            'reportCard' => $this->buildReportCard($filters),
+            'reportReports' => $this->buildDetailedReports($filters, $maxTrimesterNumber),
             'reportFilters' => $filters,
             'reportStudents' => $this->studentsForFamily(),
             'reportSections' => $this->reportSections(),
@@ -278,8 +293,9 @@ class PanelController extends Controller
                 'value' => '',
                 'label' => 'Anual',
                 'type' => 'annual',
-            ]])->merge($this->periodOptions($trimesters)),
+            ]])->merge($this->periodOptions($trimesters)->where('type', 'trimester')->values()),
             'reportSelectedPeriodLabel' => $selectedPeriod === '' ? 'Anual' : $selectedPeriodMeta['label'],
+            'reportIsAnnual' => $selectedPeriod === '',
         ]);
     }
 
@@ -287,17 +303,23 @@ class PanelController extends Controller
     {
         $studentId = request()->integer('alumno_id');
         $sectionId = request()->integer('seccion_id');
+        $trimesters = DB::table('trimestres')->orderBy('numero')->get();
+        $selectedPeriod = $this->selectedPeriodValue($trimesters, true);
+        $selectedPeriodMeta = $selectedPeriod === '' ? null : $this->selectedPeriodMeta($selectedPeriod, $trimesters);
+        $maxTrimesterNumber = $selectedPeriod === ''
+            ? null
+            : (int) ($trimesters->firstWhere('id', $selectedPeriodMeta['trimester_id'])?->numero ?? 1);
         $this->guardReportAccess($studentId, $sectionId);
 
         if (! $studentId && ! $sectionId) {
             return redirect()
                 ->route('reportcard.index', request()->query())
-                ->with('error', 'Selecciona una seccion o un alumno para descargar el boletin anual.');
+                ->with('error', 'Selecciona una sección o un alumno para descargar el boletín.');
         }
 
         $reports = $studentId
-            ? collect([$this->buildAnnualStudentReport($studentId, $sectionId)])->filter()
-            : $this->buildAnnualSectionReports($sectionId);
+            ? collect([$this->buildAnnualStudentReport($studentId, $sectionId, $maxTrimesterNumber)])->filter()
+            : $this->buildAnnualSectionReports($sectionId, $maxTrimesterNumber);
 
         if ($reports->isEmpty()) {
             return redirect()
@@ -312,6 +334,7 @@ class PanelController extends Controller
 
         return Pdf::loadView('panel.reportcard-pdf', [
             'reports' => $reports,
+            'periodLabel' => $selectedPeriod === '' ? 'Anual' : $selectedPeriodMeta['label'],
         ])->setPaper('legal', 'landscape')->download($fileName);
     }
 
@@ -566,8 +589,8 @@ class PanelController extends Controller
             ->leftJoinSub($finals, 'sf', function ($join) {
                 $join->on('sf.asignacion_id', '=', 'ag.id');
             })
-            ->groupBy('m.id', 'm.nombre', 'm.plantilla_colector', 'm.activo')
-            ->selectRaw('m.id, m.nombre, m.plantilla_colector, m.activo, COUNT(DISTINCT p.id) as total_profesores, COUNT(DISTINCT ag.seccion_id) as total_secciones, ROUND(AVG(sf.nota_final), 1) as promedio')
+            ->groupBy('m.id', 'm.nombre', 'm.plantilla_colector', 'm.activo', 'm.es_electiva')
+            ->selectRaw('m.id, m.nombre, m.plantilla_colector, m.activo, m.es_electiva, COUNT(DISTINCT p.id) as total_profesores, COUNT(DISTINCT ag.seccion_id) as total_secciones, ROUND(AVG(sf.nota_final), 1) as promedio')
             ->orderByDesc('m.activo')
             ->orderBy('m.id')
             ->get();
@@ -605,7 +628,9 @@ class PanelController extends Controller
             ->join('profesores as p', function ($join) {
                 $join->on('p.id', '=', 'ag.profesor_id')->where('p.activo', true);
             })
-            ->selectRaw("ag.id, ag.anio_escolar, CONCAT(s.grado, ' ', s.nombre) as seccion, m.nombre as materia, TRIM(CONCAT(p.nombres, ' ', p.apellidos)) as profesor")
+            ->leftJoin('asignacion_alumno as aa', 'aa.asignacion_id', '=', 'ag.id')
+            ->groupBy('ag.id', 'ag.anio_escolar', 's.grado', 's.nombre', 'm.nombre', 'm.es_electiva', 'p.nombres', 'p.apellidos')
+            ->selectRaw("ag.id, ag.anio_escolar, CONCAT(s.grado, ' ', s.nombre) as seccion, m.nombre as materia, m.es_electiva, COUNT(DISTINCT aa.alumno_id) as total_alumnos_electivos, TRIM(CONCAT(p.nombres, ' ', p.apellidos)) as profesor")
             ->orderByDesc('ag.anio_escolar')
             ->orderBy('s.grado')
             ->orderBy('s.nombre')
@@ -898,11 +923,17 @@ class PanelController extends Controller
             ];
         }
 
+        $hasSelectedStudents = DB::table('asignacion_alumno')->where('asignacion_id', $assignmentId)->exists();
         $students = DB::table('alumnos')
             ->where('activo', true)
-            ->where('seccion_id', $assignment->seccion_id)
+            ->when(
+                $hasSelectedStudents,
+                fn ($query) => $query->whereIn('id', DB::table('asignacion_alumno')->where('asignacion_id', $assignmentId)->select('alumno_id')),
+                fn ($query) => $query->where('seccion_id', $assignment->seccion_id)
+            )
             ->select('id', 'nombres', 'apellidos')
-            ->orderBy('id')
+            ->orderBy('apellidos')
+            ->orderBy('nombres')
             ->get();
 
         $scores = DB::table('notas_alumnos')
@@ -912,12 +943,6 @@ class PanelController extends Controller
             ->get()
             ->groupBy('alumno_id')
             ->map(fn (Collection $rows) => $rows->keyBy('categoria_id'));
-
-        $conducts = DB::table('conducta_alumnos')
-            ->where('activo', true)
-            ->where('asignacion_id', $assignmentId)
-            ->where('trimestre_id', $trimesterId)
-            ->pluck('valor', 'alumno_id');
 
         $periodExamMeta = $this->periodExamMeta($trimesterId);
         $periodExams = $periodExamMeta
@@ -935,7 +960,7 @@ class PanelController extends Controller
         $canCalculateReport = $percentageTotal === 100.0 && $progress1Weight > 0 && $progress2Weight > 0;
         $gradeCollectorService = app(GradeCollectorService::class);
 
-        $rows = $students->map(function ($student) use ($categories, $scores, $conducts, $periodExams, $annualSummaries, $canCalculateReport, $progress1Weight, $progress2Weight, $gradeCollectorService) {
+        $rows = $students->map(function ($student) use ($categories, $scores, $periodExams, $annualSummaries, $canCalculateReport, $progress1Weight, $progress2Weight, $gradeCollectorService) {
             $studentScores = $scores->get($student->id, collect());
             $progress1 = 0;
             $progress2 = 0;
@@ -971,7 +996,6 @@ class PanelController extends Controller
                 'progress_1' => $normalizedProgress1,
                 'progress_2' => $normalizedProgress2,
                 'report_card' => $canCalculateReport ? round(($normalizedProgress1 + $normalizedProgress2) / 2, 2) : null,
-                'conducta' => $conducts[$student->id] ?? null,
                 'period_exam' => $periodExams[$student->id] ?? null,
                 'annual_average' => $annualSummary['weighted_total'] ?? $annualSummary['weighted_partial'],
                 'annual_average_final' => $annualSummary['weighted_total'],
@@ -987,6 +1011,54 @@ class PanelController extends Controller
             'progress_1_percentage' => $progress1Weight,
             'progress_2_percentage' => $progress2Weight,
             'can_calculate_report' => $canCalculateReport,
+        ];
+    }
+
+    private function buildHomeroomEvaluationBoard(?int $sectionId, ?int $trimesterId): array
+    {
+        if (! $sectionId || ! $trimesterId) {
+            return ['rows' => collect(), 'teacher_name' => null, 'can_edit' => false];
+        }
+
+        $section = DB::table('secciones as s')
+            ->leftJoin('profesores as p', 'p.id', '=', 's.titular_profesor_id')
+            ->where('s.id', $sectionId)
+            ->where('s.activo', true)
+            ->selectRaw("s.id, s.titular_profesor_id, TRIM(CONCAT(COALESCE(p.nombres, ''), ' ', COALESCE(p.apellidos, ''))) as teacher_name")
+            ->first();
+
+        if (! $section) {
+            return ['rows' => collect(), 'teacher_name' => null, 'can_edit' => false];
+        }
+
+        $evaluations = DB::table('evaluaciones_titular')
+            ->where('seccion_id', $sectionId)
+            ->where('trimestre_id', $trimesterId)
+            ->where('activo', true)
+            ->get()
+            ->keyBy('alumno_id');
+        $rows = DB::table('alumnos')
+            ->where('seccion_id', $sectionId)
+            ->where('activo', true)
+            ->orderBy('apellidos')
+            ->orderBy('nombres')
+            ->get(['id', 'nombres', 'apellidos'])
+            ->map(function ($student) use ($evaluations) {
+                $evaluation = $evaluations->get($student->id);
+
+                return [
+                    'id' => $student->id,
+                    'nombre' => trim($student->nombres.' '.$student->apellidos),
+                    'conducta' => $evaluation->conducta ?? null,
+                    'comentario' => $evaluation->comentario ?? null,
+                ];
+            });
+
+        return [
+            'rows' => $rows,
+            'teacher_name' => $section->teacher_name ?: 'Sin titular asignado',
+            'can_edit' => $this->professorUserActive()
+                && (int) $section->titular_profesor_id === (int) ($this->currentTeacherId() ?? 0),
         ];
     }
 
@@ -1097,7 +1169,7 @@ class PanelController extends Controller
         return Subject::active()->orderBy('nombre')->pluck('nombre')->all();
     }
 
-    private function buildAnnualStudentReport(int $studentId, ?int $sectionId = null): ?array
+    private function buildAnnualStudentReport(int $studentId, ?int $sectionId = null, ?int $maxTrimesterNumber = null): ?array
     {
         $user = Auth::user();
         abort_unless($user instanceof User && app(StudentAccess::class)->allowsStudent($user, $studentId), 403);
@@ -1106,10 +1178,11 @@ class PanelController extends Controller
             ->join('secciones as s', function ($join) {
                 $join->on('s.id', '=', 'a.seccion_id')->where('s.activo', true);
             })
+            ->leftJoin('profesores as tp', 'tp.id', '=', 's.titular_profesor_id')
             ->where('a.activo', true)
             ->where('a.id', $studentId)
             ->when($sectionId, fn ($query) => $query->where('s.id', $sectionId))
-            ->selectRaw("a.id, a.seccion_id, a.nombres, a.apellidos, CONCAT(a.nombres, ' ', a.apellidos) as full_name, CONCAT(s.grado, ' ', s.nombre) as section_name, s.anio_escolar")
+            ->selectRaw("a.id, a.seccion_id, a.nombres, a.apellidos, CONCAT(a.nombres, ' ', a.apellidos) as full_name, CONCAT(s.grado, ' ', s.nombre) as section_name, s.anio_escolar, TRIM(CONCAT(COALESCE(tp.nombres, ''), ' ', COALESCE(tp.apellidos, ''))) as titular_name")
             ->first();
 
         if (! $student) {
@@ -1117,6 +1190,7 @@ class PanelController extends Controller
         }
 
         $trimesters = DB::table('trimestres')
+            ->when($maxTrimesterNumber, fn ($query) => $query->where('numero', '<=', $maxTrimesterNumber))
             ->orderBy('numero')
             ->get(['id', 'nombre', 'numero']);
 
@@ -1128,7 +1202,16 @@ class PanelController extends Controller
             ->leftJoin('profesores as p', function ($join) {
                 $join->on('p.id', '=', 'ag.profesor_id')->where('p.activo', true);
             })
-            ->where('ag.seccion_id', $student->seccion_id)
+            ->where(function ($query) use ($studentId, $student) {
+                $query->where(function ($regular) use ($student) {
+                    $regular->where('m.es_electiva', false)->where('ag.seccion_id', $student->seccion_id);
+                })
+                    ->orWhereExists(function ($subQuery) use ($studentId) {
+                        $subQuery->from('asignacion_alumno as aa')
+                            ->whereColumn('aa.asignacion_id', 'ag.id')
+                            ->where('aa.alumno_id', $studentId);
+                    });
+            })
             ->where('ag.anio_escolar', $student->anio_escolar)
             ->selectRaw("ag.id, ag.profesor_id, m.nombre as subject_name, TRIM(CONCAT(COALESCE(p.nombres, ''), ' ', COALESCE(p.apellidos, ''))) as teacher_name")
             ->orderBy('m.nombre')
@@ -1146,13 +1229,12 @@ class PanelController extends Controller
             ->groupBy('asignacion_id')
             ->map(fn (Collection $rows) => $rows->keyBy('trimestre_id'));
 
-        $conductRows = DB::table('conducta_alumnos')
+        $homeroomRows = DB::table('evaluaciones_titular')
             ->where('activo', true)
             ->where('alumno_id', $studentId)
-            ->whereIn('asignacion_id', $assignments->pluck('id'))
-            ->get(['asignacion_id', 'trimestre_id', 'valor'])
-            ->groupBy('asignacion_id')
-            ->map(fn (Collection $rows) => $rows->keyBy('trimestre_id'));
+            ->where('seccion_id', $student->seccion_id)
+            ->get(['trimestre_id', 'conducta', 'comentario'])
+            ->keyBy('trimestre_id');
 
         $periodExamRows = StudentPeriodExam::query()
             ->where('activo', true)
@@ -1162,30 +1244,17 @@ class PanelController extends Controller
             ->groupBy('asignacion_id')
             ->map(fn (Collection $rows) => $rows->keyBy('tipo'));
 
-        $subjects = $assignments->map(function ($assignment) use ($trimesters, $finalRows, $conductRows, $periodExamRows) {
+        $subjects = $assignments->map(function ($assignment) use ($trimesters, $finalRows, $periodExamRows, $maxTrimesterNumber) {
             $trimesterData = [];
-            $periodAverages = [];
-            $conductAverages = [];
 
             foreach ($trimesters as $trimester) {
                 $final = $finalRows->get($assignment->id)?->get($trimester->id);
-                $conduct = $conductRows->get($assignment->id)?->get($trimester->id);
                 $periodAverage = $final->nota_final ?? null;
-                $conductValue = $conduct->valor ?? null;
-
-                if ($periodAverage !== null) {
-                    $periodAverages[] = (float) $periodAverage;
-                }
-
-                if ($conductValue !== null) {
-                    $conductAverages[] = (float) $conductValue;
-                }
 
                 $trimesterData[$trimester->numero] = [
                     'progress_1' => $final->progress_1 ?? null,
                     'progress_2' => $final->progress_2 ?? null,
                     'period_average' => $periodAverage,
-                    'conduct' => $conductValue,
                 ];
             }
 
@@ -1198,19 +1267,26 @@ class PanelController extends Controller
                 'terms' => $trimesterData,
                 'semester_evaluation' => $semesterEvaluation,
                 'final_evaluation' => $finalEvaluation,
-                'final_conduct' => $this->averageValues($conductAverages),
-                'final_period' => $this->weightedAnnualGrade([
+                'final_period' => $maxTrimesterNumber === null ? $this->weightedAnnualGrade([
                     't1' => $trimesterData[1]['period_average'] ?? null,
                     't2' => $trimesterData[2]['period_average'] ?? null,
                     't3' => $trimesterData[3]['period_average'] ?? null,
                     't4' => $trimesterData[4]['period_average'] ?? null,
                     'semestral' => $semesterEvaluation,
                     'final' => $finalEvaluation,
-                ]),
+                ]) : null,
             ];
         })->values();
 
-        $teacherName = collect($subjects)->pluck('teacher')->filter()->first() ?: 'Sin asignar';
+        $teacherName = $student->titular_name ?: 'Sin titular asignado';
+        $homeroomByTerm = $trimesters->mapWithKeys(function ($trimester) use ($homeroomRows) {
+            $evaluation = $homeroomRows->get($trimester->id);
+
+            return [(int) $trimester->numero => [
+                'conduct' => $evaluation->conducta ?? null,
+                'comment' => $evaluation->comentario ?? null,
+            ]];
+        });
 
         return [
             'student' => [
@@ -1223,7 +1299,13 @@ class PanelController extends Controller
             'teacher_name' => $teacherName,
             'terms' => $trimesters->keyBy('numero'),
             'subjects' => $subjects,
-            'teacher_comment' => 'Hemos finalizado un ciclo academico con buen avance. Sigue esforzandote y manteniendo constancia en cada materia.',
+            'homeroom' => $homeroomByTerm,
+            'final_conduct' => $this->averageValues($homeroomByTerm->pluck('conduct')),
+            'teacher_comments' => $homeroomByTerm
+                ->filter(fn (array $evaluation) => filled($evaluation['comment']))
+                ->map(fn (array $evaluation) => $evaluation['comment'])
+                ->all(),
+            'is_annual' => $maxTrimesterNumber === null,
             'signatures' => [
                 'headmaster' => 'Dirección Academica',
                 'teacher' => $teacherName,
@@ -1231,7 +1313,7 @@ class PanelController extends Controller
         ];
     }
 
-    private function buildAnnualSectionReports(?int $sectionId): Collection
+    private function buildAnnualSectionReports(?int $sectionId, ?int $maxTrimesterNumber = null): Collection
     {
         if (! $sectionId) {
             return collect();
@@ -1252,7 +1334,29 @@ class PanelController extends Controller
             ->pluck('id');
 
         return $studentIds
-            ->map(fn ($studentId) => $this->buildAnnualStudentReport((int) $studentId, $sectionId))
+            ->map(fn ($studentId) => $this->buildAnnualStudentReport((int) $studentId, $sectionId, $maxTrimesterNumber))
+            ->filter()
+            ->values();
+    }
+
+    private function buildDetailedReports(array $filters, ?int $maxTrimesterNumber): Collection
+    {
+        $studentQuery = DB::table('alumnos as a')
+            ->where('a.activo', true)
+            ->when(! empty($filters['seccion_id']), fn ($query) => $query->where('a.seccion_id', $filters['seccion_id']))
+            ->when(! empty($filters['alumno_id']), fn ($query) => $query->where('a.id', $filters['alumno_id']));
+
+        $this->applyStudentAccess($studentQuery, 'a.id');
+
+        return $studentQuery
+            ->orderBy('a.apellidos')
+            ->orderBy('a.nombres')
+            ->pluck('a.id')
+            ->map(fn ($studentId) => $this->buildAnnualStudentReport(
+                (int) $studentId,
+                ! empty($filters['seccion_id']) ? (int) $filters['seccion_id'] : null,
+                $maxTrimesterNumber
+            ))
             ->filter()
             ->values();
     }
@@ -1334,10 +1438,15 @@ class PanelController extends Controller
         }
 
         $sectionId = DB::table('asignaciones')->where('id', $assignmentId)->value('seccion_id');
+        $hasSelectedStudents = DB::table('asignacion_alumno')->where('asignacion_id', $assignmentId)->exists();
 
         $students = DB::table('alumnos')
             ->where('activo', true)
-            ->where('seccion_id', $sectionId)
+            ->when(
+                $hasSelectedStudents,
+                fn ($query) => $query->whereIn('id', DB::table('asignacion_alumno')->where('asignacion_id', $assignmentId)->select('alumno_id')),
+                fn ($query) => $query->where('seccion_id', $sectionId)
+            )
             ->select('id', 'nombres', 'apellidos')
             ->orderBy('id')
             ->get();
@@ -1674,6 +1783,15 @@ class PanelController extends Controller
                             ->where('activo', true)
                             ->where('profesor_id', $teacherId)
                             ->when($year, fn ($assignmentQuery) => $assignmentQuery->where('anio_escolar', $year));
+                    })
+                    ->orWhereIn('id', function ($subQuery) use ($teacherId, $year) {
+                        $subQuery->from('asignacion_alumno as aa')
+                            ->join('asignaciones as ag', 'ag.id', '=', 'aa.asignacion_id')
+                            ->join('alumnos as a', 'a.id', '=', 'aa.alumno_id')
+                            ->select('a.seccion_id')
+                            ->where('ag.activo', true)
+                            ->where('ag.profesor_id', $teacherId)
+                            ->when($year, fn ($assignmentQuery) => $assignmentQuery->where('ag.anio_escolar', $year));
                     });
             });
         }
@@ -1707,7 +1825,18 @@ class PanelController extends Controller
                 $join->on('m.id', '=', 'ag.materia_id')->where('m.activo', true);
             })
             ->when($year, fn ($query) => $query->where('ag.anio_escolar', $year))
-            ->when($sectionId, fn ($query) => $query->where('ag.seccion_id', $sectionId));
+            ->when($sectionId, fn ($query) => $query->where(function ($builder) use ($sectionId) {
+                $builder->where(function ($regular) use ($sectionId) {
+                    $regular->where('m.es_electiva', false)->where('ag.seccion_id', $sectionId);
+                })
+                    ->orWhereExists(function ($subQuery) use ($sectionId) {
+                        $subQuery->from('asignacion_alumno as aa')
+                            ->join('alumnos as a', 'a.id', '=', 'aa.alumno_id')
+                            ->whereColumn('aa.asignacion_id', 'ag.id')
+                            ->where('a.seccion_id', $sectionId)
+                            ->where('a.activo', true);
+                    });
+            }));
 
         if ($this->professorUserActive()) {
             $teacherId = $this->currentTeacherId() ?? -1;
@@ -1743,7 +1872,18 @@ class PanelController extends Controller
                 $join->on('p.id', '=', 'ag.profesor_id')->where('p.activo', true);
             })
             ->where('ag.anio_escolar', $year)
-            ->where('ag.seccion_id', $sectionId)
+            ->where(function ($builder) use ($sectionId) {
+                $builder->where(function ($regular) use ($sectionId) {
+                    $regular->where('m.es_electiva', false)->where('ag.seccion_id', $sectionId);
+                })
+                    ->orWhereExists(function ($subQuery) use ($sectionId) {
+                        $subQuery->from('asignacion_alumno as aa')
+                            ->join('alumnos as a', 'a.id', '=', 'aa.alumno_id')
+                            ->whereColumn('aa.asignacion_id', 'ag.id')
+                            ->where('a.seccion_id', $sectionId)
+                            ->where('a.activo', true);
+                    });
+            })
             ->where('ag.materia_id', $subjectId);
 
         if ($this->professorUserActive()) {

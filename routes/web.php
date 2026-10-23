@@ -10,6 +10,7 @@ use App\Http\Controllers\EmailPreviewController;
 use App\Http\Controllers\EmailTemplateController;
 use App\Http\Controllers\EvaluationController;
 use App\Http\Controllers\GuardianController;
+use App\Http\Controllers\HomeroomEvaluationController;
 use App\Http\Controllers\MediaController;
 use App\Http\Controllers\MenuManagementController;
 use App\Http\Controllers\NotificationController;
@@ -131,6 +132,7 @@ Route::middleware(['auth', 'user.active', 'password.strong'])->group(function ()
     Route::patch('/notas/categorias/{evaluation}', [EvaluationController::class, 'update'])->middleware('menu.access:gradebook')->name('gradebook.categories.update');
     Route::delete('/notas/categorias/{evaluation}', [EvaluationController::class, 'destroy'])->middleware('menu.access:gradebook')->name('gradebook.categories.destroy');
     Route::post('/notas/calificaciones', [EvaluationController::class, 'syncScores'])->middleware('menu.access:gradebook')->name('gradebook.scores.sync');
+    Route::post('/notas/titular', [HomeroomEvaluationController::class, 'sync'])->middleware(['menu.access:gradebook', 'role.access:profesor'])->name('gradebook.homeroom.sync');
     Route::post('/notas/importar', [EvaluationController::class, 'import'])->middleware('menu.access:gradebook')->name('gradebook.import');
     Route::get('/notas/plantillas/{template}', [EvaluationController::class, 'template'])->middleware('menu.access:gradebook')->name('gradebook.templates');
     Route::post('/notas/plantillas/aplicar', [EvaluationController::class, 'applyTemplate'])->middleware('menu.access:gradebook')->name('gradebook.templates.apply');
@@ -230,6 +232,7 @@ Route::prefix('pad')->middleware(['auth', 'user.active', 'password.strong'])->gr
     Route::patch('/notas/categorias/{evaluation}', [EvaluationController::class, 'update'])->middleware('menu.access:gradebook');
     Route::delete('/notas/categorias/{evaluation}', [EvaluationController::class, 'destroy'])->middleware('menu.access:gradebook');
     Route::post('/notas/calificaciones', [EvaluationController::class, 'syncScores'])->middleware('menu.access:gradebook');
+    Route::post('/notas/titular', [HomeroomEvaluationController::class, 'sync'])->middleware(['menu.access:gradebook', 'role.access:profesor']);
     Route::post('/notas/importar', [EvaluationController::class, 'import'])->middleware('menu.access:gradebook');
     Route::get('/notas/plantillas/{template}', [EvaluationController::class, 'template'])->middleware('menu.access:gradebook');
     Route::post('/notas/plantillas/aplicar', [EvaluationController::class, 'applyTemplate'])->middleware('menu.access:gradebook');
