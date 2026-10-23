@@ -41,6 +41,26 @@ class AuthorizationRoutesTest extends TestCase
         $this->actingAs($user)->get('/correos')->assertForbidden();
     }
 
+    public function test_admin_can_reactivate_an_inactive_subject(): void
+    {
+        [$user, $menuId] = $this->userWithMenu('admin', 'subjects');
+        DB::table('rol_menu')->insert(['rol_id' => $user->rol_id, 'menu_id' => $menuId]);
+        $subjectId = DB::table('materias')->insertGetId([
+            'nombre' => 'Materia inactiva',
+            'activo' => false,
+        ]);
+
+        $this->actingAs($user)
+            ->patch("/materias/{$subjectId}/reactivar")
+            ->assertRedirect('/pad/materias')
+            ->assertSessionHas('status', 'Materia reactivada correctamente.');
+
+        $this->assertDatabaseHas('materias', [
+            'id' => $subjectId,
+            'activo' => true,
+        ]);
+    }
+
     private function userWithMenu(string $roleName, string $menuKey): array
     {
         $roleId = DB::table('roles')->insertGetId([

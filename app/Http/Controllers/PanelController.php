@@ -557,7 +557,6 @@ class PanelController extends Controller
         $finals = $this->subjectFinalsSubquery();
 
         return DB::table('materias as m')
-            ->where('m.activo', true)
             ->leftJoin('asignaciones as ag', function ($join) {
                 $join->on('ag.materia_id', '=', 'm.id')->where('ag.activo', true);
             })
@@ -567,8 +566,9 @@ class PanelController extends Controller
             ->leftJoinSub($finals, 'sf', function ($join) {
                 $join->on('sf.asignacion_id', '=', 'ag.id');
             })
-            ->groupBy('m.id', 'm.nombre', 'm.plantilla_colector')
-            ->selectRaw('m.id, m.nombre, m.plantilla_colector, COUNT(DISTINCT p.id) as total_profesores, COUNT(DISTINCT ag.seccion_id) as total_secciones, ROUND(AVG(sf.nota_final), 1) as promedio')
+            ->groupBy('m.id', 'm.nombre', 'm.plantilla_colector', 'm.activo')
+            ->selectRaw('m.id, m.nombre, m.plantilla_colector, m.activo, COUNT(DISTINCT p.id) as total_profesores, COUNT(DISTINCT ag.seccion_id) as total_secciones, ROUND(AVG(sf.nota_final), 1) as promedio')
+            ->orderByDesc('m.activo')
             ->orderBy('m.id')
             ->get();
     }

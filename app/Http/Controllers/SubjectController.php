@@ -47,4 +47,11 @@ class SubjectController extends Controller
 
         return redirect('/pad/materias')->with('status', 'Materia desactivada correctamente.');
     }
+
+    public function restore(Subject $subject): RedirectResponse
+    {
+        $subject->update(['activo' => true]);
+
+        return redirect('/pad/materias')->with('status', 'Materia reactivada correctamente.');
+    }
 }

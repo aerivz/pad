@@ -108,6 +108,7 @@ Route::middleware(['auth', 'user.active', 'password.strong'])->group(function ()
     Route::get('/materias', [PanelController::class, 'subjects'])->middleware('menu.access:subjects')->name('subjects.index');
     Route::post('/materias', [SubjectController::class, 'store'])->middleware(['menu.access:subjects', 'role.access:admin,secretaria'])->name('subjects.store');
     Route::patch('/materias/{subject}', [SubjectController::class, 'update'])->middleware(['menu.access:subjects', 'role.access:admin,secretaria'])->name('subjects.update');
+    Route::patch('/materias/{subject}/reactivar', [SubjectController::class, 'restore'])->middleware(['menu.access:subjects', 'role.access:admin,secretaria'])->name('subjects.restore');
     Route::delete('/materias/{subject}', [SubjectController::class, 'destroy'])->middleware(['menu.access:subjects', 'role.access:admin,secretaria'])->name('subjects.destroy');
     Route::get('/plantillas-colector', [PanelController::class, 'collectorTemplates'])->middleware('menu.access:collector_templates')->name('collector-templates.index');
     Route::post('/plantillas-colector', [CollectorTemplateController::class, 'store'])->middleware(['menu.access:collector_templates', 'role.access:admin,secretaria'])->name('collector-templates.store');
@@ -206,6 +207,7 @@ Route::prefix('pad')->middleware(['auth', 'user.active', 'password.strong'])->gr
     Route::get('/materias', [PanelController::class, 'subjects'])->middleware('menu.access:subjects');
     Route::post('/materias', [SubjectController::class, 'store'])->middleware(['menu.access:subjects', 'role.access:admin,secretaria']);
     Route::patch('/materias/{subject}', [SubjectController::class, 'update'])->middleware(['menu.access:subjects', 'role.access:admin,secretaria']);
+    Route::patch('/materias/{subject}/reactivar', [SubjectController::class, 'restore'])->middleware(['menu.access:subjects', 'role.access:admin,secretaria']);
     Route::delete('/materias/{subject}', [SubjectController::class, 'destroy'])->middleware(['menu.access:subjects', 'role.access:admin,secretaria']);
     Route::get('/plantillas-colector', [PanelController::class, 'collectorTemplates'])->middleware('menu.access:collector_templates');
     Route::post('/plantillas-colector', [CollectorTemplateController::class, 'store'])->middleware(['menu.access:collector_templates', 'role.access:admin,secretaria']);

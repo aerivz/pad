@@ -33,6 +33,7 @@
                 <select class="form-control" data-filter-name="status">
                     <option value="">Todos</option>
                     <option value="activo">Activo</option>
+                    <option value="inactivo">Inactivo</option>
                 </select>
             </div>
             <div class="d-flex" style="gap:.5rem;">
@@ -57,7 +58,7 @@
                 </thead>
                 <tbody>
                 @forelse ($subjects as $subject)
-                    <tr data-filter-row data-text="{{ strtolower($subject->nombre) }}" data-status="activo">
+                    <tr data-filter-row data-text="{{ strtolower($subject->nombre) }}" data-status="{{ $subject->activo ? 'activo' : 'inactivo' }}">
                         <td>{{ $subject->id }}</td>
                         <td>
                             <div class="maint-identity">
@@ -72,7 +73,7 @@
                         <td>{{ $subject->total_profesores }}</td>
                         <td>{{ $subject->total_secciones }}</td>
                         <td>{{ $subject->promedio ?? '-' }}</td>
-                        <td><span class="maint-status maint-status-active">Activa</span></td>
+                        <td><span class="maint-status {{ $subject->activo ? 'maint-status-active' : 'maint-status-muted' }}">{{ $subject->activo ? 'Activa' : 'Inactiva' }}</span></td>
                         <td class="maint-actions-cell">
                             <button type="button" class="btn btn-xs btn-info subject-view-button"
                                 data-name="{{ $subject->nombre }}"
@@ -82,8 +83,10 @@
                                 data-average="{{ $subject->promedio ?? 'Sin promedio' }}">
                                 <i class="fas fa-eye"></i>
                             </button>
-                            @if ($canManageAcademicData)<a href="{{ \App\Support\AppUrl::route('subjects.index') }}?edit_subject={{ $subject->id }}" class="btn btn-xs btn-warning"><i class="fas fa-pen"></i></a>
-                            <form method="POST" action="{{ \App\Support\AppUrl::route('subjects.destroy', ['subject' => $subject->id]) }}" data-swal-confirm="true" data-swal-title="Desactivar materia" data-swal-text="La materia quedara inactiva para nuevos procesos, pero el historial se conservara." data-swal-confirm-label="Si, desactivar">@csrf @method('DELETE')<button class="btn btn-xs btn-danger"><i class="fas fa-user-slash"></i></button></form>
+                            @if ($canManageAcademicData && $subject->activo)<a href="{{ \App\Support\AppUrl::route('subjects.index') }}?edit_subject={{ $subject->id }}" class="btn btn-xs btn-warning" title="Editar materia"><i class="fas fa-pen"></i></a>
+                            <form method="POST" action="{{ \App\Support\AppUrl::route('subjects.destroy', ['subject' => $subject->id]) }}" data-swal-confirm="true" data-swal-title="Desactivar materia" data-swal-text="La materia quedara inactiva para nuevos procesos, pero el historial se conservara." data-swal-confirm-label="Si, desactivar">@csrf @method('DELETE')<button class="btn btn-xs btn-danger" title="Desactivar materia"><i class="fas fa-user-slash"></i></button></form>
+                            @elseif ($canManageAcademicData)
+                            <form method="POST" action="{{ \App\Support\AppUrl::route('subjects.restore', ['subject' => $subject->id]) }}" data-swal-confirm="true" data-swal-title="Reactivar materia" data-swal-text="La materia volvera a estar disponible para asignaciones y nuevos procesos." data-swal-confirm-label="Si, reactivar">@csrf @method('PATCH')<button class="btn btn-xs btn-success" title="Reactivar materia"><i class="fas fa-undo"></i></button></form>
                             @endif
                         </td>
                     </tr>
