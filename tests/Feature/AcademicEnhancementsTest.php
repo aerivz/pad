@@ -104,6 +104,90 @@ class AcademicEnhancementsTest extends TestCase
         ])->assertForbidden();
     }
 
+    public function test_admin_can_configure_ordered_trimester_start_dates(): void
+    {
+        [$user, $menuId] = $this->userWithMenu('admin', 'config');
+        DB::table('rol_menu')->insert(['rol_id' => $user->rol_id, 'menu_id' => $menuId]);
+        DB::table('trimestres')->delete();
+        $trimesters = collect(range(1, 4))->mapWithKeys(function (int $number): array {
+            $id = DB::table('trimestres')->insertGetId([
+                'nombre' => 'Trimestre '.$number,
+                'numero' => $number,
+            ]);
+
+            return [$id => sprintf('2026-%02d-01', (($number - 1) * 3) + 1)];
+        });
+
+        $this->actingAs($user)->put('/configuracion', [
+            'report_academic_year' => '2025 - 2026',
+            'trimester_starts' => $trimesters->all(),
+            'mail_mailer' => 'log',
+            'mail_rate_limit_per_minute' => 30,
+        ])->assertSessionHasNoErrors();
+
+        foreach ($trimesters as $id => $startDate) {
+            $this->assertDatabaseHas('trimestres', ['id' => $id, 'fecha_inicio' => $startDate]);
+        }
+
+        $invalidStarts = $trimesters->all();
+        $secondTrimesterId = $trimesters->keys()[1];
+        $invalidStarts[$secondTrimesterId] = '2025-12-01';
+
+        $this->actingAs($user)->put('/configuracion', [
+            'trimester_starts' => $invalidStarts,
+            'mail_mailer' => 'log',
+            'mail_rate_limit_per_minute' => 30,
+        ])->assertSessionHasErrors('trimester_starts.'.$secondTrimesterId);
+
+        $this->assertDatabaseHas('trimestres', [
+            'id' => $secondTrimesterId,
+            'fecha_inicio' => $trimesters[$secondTrimesterId],
+        ]);
+    }
+
+    public function test_attendance_summary_uses_automatic_trimester_end_date(): void
+    {
+        [$user, $menuId] = $this->userWithMenu('admin', 'attendance');
+        DB::table('rol_menu')->insert(['rol_id' => $user->rol_id, 'menu_id' => $menuId]);
+        DB::table('trimestres')->delete();
+        $firstTrimesterId = DB::table('trimestres')->insertGetId([
+            'nombre' => 'Primer trimestre',
+            'numero' => 1,
+            'fecha_inicio' => '2026-01-10',
+        ]);
+        DB::table('trimestres')->insert([
+            'nombre' => 'Segundo trimestre',
+            'numero' => 2,
+            'fecha_inicio' => '2026-04-01',
+        ]);
+        $sectionId = $this->section('Segundo', 'A');
+        $studentId = $this->student($sectionId, 'Ana');
+        DB::table('asistencias_alumnos')->insert([
+            [
+                'alumno_id' => $studentId,
+                'seccion_id' => $sectionId,
+                'fecha' => '2026-03-30',
+                'estado' => 'presente',
+                'created_at' => now(),
+                'updated_at' => now(),
+            ],
+            [
+                'alumno_id' => $studentId,
+                'seccion_id' => $sectionId,
+                'fecha' => '2026-04-01',
+                'estado' => 'ausente',
+                'created_at' => now(),
+                'updated_at' => now(),
+            ],
+        ]);
+
+        $response = $this->actingAs($user)->get('/asistencia?anio_escolar=2026&seccion_id='.$sectionId.'&fecha=2026-03-30&trimestre_id='.$firstTrimesterId);
+
+        $response->assertOk()
+            ->assertViewHas('attendanceTrimesterEnd', '2026-03-31')
+            ->assertViewHas('attendanceTrimesterSummary', fn (array $summary): bool => $summary['presentes'] === 1 && $summary['ausentes'] === 0 && $summary['porcentaje'] === 100.0);
+    }
+
     private function section(string $grade, string $name, ?int $teacherId = null): int
     {
         return DB::table('secciones')->insertGetId([

@@ -20,6 +20,7 @@ class AttendanceController extends Controller
         $data = $request->validate([
             'seccion_id' => ['required', 'integer', 'exists:secciones,id'],
             'fecha' => ['required', 'date'],
+            'trimestre_id' => ['nullable', 'integer', 'exists:trimestres,id'],
             'estado' => ['nullable', 'array'],
             'estado.*' => ['nullable', 'in:presente,ausente'],
             'tipo_justificante' => ['nullable', 'array'],
@@ -66,6 +67,7 @@ class AttendanceController extends Controller
             'anio_escolar' => $section->anio_escolar,
             'seccion_id' => $section->id,
             'fecha' => $data['fecha'],
+            'trimestre_id' => $data['trimestre_id'] ?? null,
         ]))->with('status', $saved.' asistencias actualizadas.');
     }
 

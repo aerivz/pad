@@ -11,6 +11,32 @@
             <form method="POST" action="{{ \App\Support\AppUrl::route('config.update') }}" class="card maint-card">
                 @csrf
                 @method('PUT')
+                <div class="card-header"><h3 class="card-title"><i class="fas fa-file-pdf mr-2"></i>Configuración de boletines</h3></div>
+                <div class="card-body">
+                    <div class="row">
+                        <div class="col-md-6 form-group mb-0">
+                            <label>Año académico mostrado en el PDF</label>
+                            <input name="report_academic_year" class="form-control" maxlength="30" value="{{ old('report_academic_year', $systemSettings['report_academic_year']) }}" placeholder="2025 - 2026">
+                            <small class="text-muted">Si se deja vacío, se utilizará el rango calculado desde el año escolar de la sección.</small>
+                        </div>
+                    </div>
+                    <hr>
+                    <h6 class="font-weight-bold mb-1">Fechas de inicio de los trimestres</h6>
+                    <p class="text-muted small">Cada trimestre finaliza automáticamente un día antes del inicio del siguiente. El último se contabiliza hasta la fecha actual.</p>
+                    <div class="row">
+                        @foreach ($trimesters as $trimester)
+                            <div class="col-md-3 form-group mb-2">
+                                <label>{{ $trimester->nombre }}</label>
+                                <input type="date" name="trimester_starts[{{ $trimester->id }}]" class="form-control @error('trimester_starts.'.$trimester->id) is-invalid @enderror" value="{{ old('trimester_starts.'.$trimester->id, $trimester->fecha_inicio) }}">
+                                @if ($trimester->fecha_fin)
+                                    <small class="text-muted">Finaliza: {{ \Carbon\Carbon::parse($trimester->fecha_fin)->format('d/m/Y') }}</small>
+                                @endif
+                                @error('trimester_starts.'.$trimester->id)<div class="invalid-feedback">{{ $message }}</div>@enderror
+                            </div>
+                        @endforeach
+                    </div>
+                    @error('trimester_starts')<div class="alert alert-danger py-2 mb-0">{{ $message }}</div>@enderror
+                </div>
                 <div class="card-header"><h3 class="card-title"><i class="fas fa-envelope mr-2"></i>Correo saliente SMTP</h3></div>
                 <div class="card-body">
                     <div class="alert alert-info py-2">Los datos reemplazan las variables de correo y no requieren editar <code>.env</code>. Contraseñas y tokens se guardan cifrados.</div>

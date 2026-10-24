@@ -14,7 +14,9 @@ class SystemSettingsService
     public function apply(): void
     {
         $settings = $this->all();
-        if ($settings === []) return;
+        if ($settings === []) {
+            return;
+        }
 
         config([
             'mail.default' => $settings['mail.mailer'] ?? config('mail.default'),
@@ -33,13 +35,22 @@ class SystemSettingsService
         ]);
     }
 
-    public function value(string $key, mixed $default = null): mixed { return $this->all()[$key] ?? $default; }
-    public function has(string $key): bool { return array_key_exists($key, $this->all()); }
+    public function value(string $key, mixed $default = null): mixed
+    {
+        return $this->all()[$key] ?? $default;
+    }
+
+    public function has(string $key): bool
+    {
+        return array_key_exists($key, $this->all());
+    }
 
     public function put(string $key, mixed $value, bool $encrypted = false): void
     {
         $storedValue = (string) $value;
-        if ($encrypted && $storedValue !== '') $storedValue = Crypt::encryptString($storedValue);
+        if ($encrypted && $storedValue !== '') {
+            $storedValue = Crypt::encryptString($storedValue);
+        }
         SystemSetting::query()->updateOrCreate(['clave' => $key], ['valor' => $storedValue, 'cifrado' => $encrypted]);
         $this->settings = null;
     }
@@ -47,6 +58,7 @@ class SystemSettingsService
     public function publicValues(): array
     {
         return [
+            'report_academic_year' => $this->value('report.academic_year'),
             'mail_mailer' => $this->value('mail.mailer', config('mail.default')), 'mail_host' => $this->value('mail.host', config('mail.mailers.smtp.host')),
             'mail_port' => $this->value('mail.port', config('mail.mailers.smtp.port')), 'mail_username' => $this->value('mail.username', config('mail.mailers.smtp.username')),
             'mail_scheme' => $this->value('mail.scheme', config('mail.mailers.smtp.scheme')), 'mail_from_address' => $this->value('mail.from_address', config('mail.from.address')),
@@ -58,17 +70,29 @@ class SystemSettingsService
 
     private function all(): array
     {
-        if ($this->settings !== null) return $this->settings;
+        if ($this->settings !== null) {
+            return $this->settings;
+        }
         try {
-            if (!Schema::hasTable('configuraciones_sistema')) return $this->settings = [];
+            if (! Schema::hasTable('configuraciones_sistema')) {
+                return $this->settings = [];
+            }
+
             return $this->settings = SystemSetting::query()->get(['clave', 'valor', 'cifrado'])->mapWithKeys(function (SystemSetting $setting): array {
                 $value = $setting->valor;
                 if ($setting->cifrado && $value !== null && $value !== '') {
-                    try { $value = Crypt::decryptString($value); } catch (Throwable) { $value = null; }
+                    try {
+                        $value = Crypt::decryptString($value);
+                    } catch (Throwable) {
+                        $value = null;
+                    }
                 }
+
                 return [$setting->clave => $value];
             })->all();
-        } catch (Throwable) { return $this->settings = []; }
+        } catch (Throwable) {
+            return $this->settings = [];
+        }
     }
 
     private function smtpScheme(?string $scheme): ?string

@@ -21,6 +21,7 @@ use App\Models\Teacher;
 use App\Models\User;
 use App\Services\GradeCollectorService;
 use App\Services\SystemSettingsService;
+use App\Services\TrimesterPeriodService;
 use App\Support\CollectorTemplateCatalog;
 use App\Support\GeneratedDocumentCatalog;
 use App\Support\StudentAccess;
@@ -87,6 +88,11 @@ class PanelController extends Controller
         $selectedDate = request()->filled('fecha') && strtotime((string) request('fecha'))
             ? (string) request('fecha')
             : now()->toDateString();
+        $trimesterPeriods = app(TrimesterPeriodService::class)->periods();
+        $dateTrimester = app(TrimesterPeriodService::class)->periodForDate($selectedDate);
+        $selectedTrimesterId = request()->integer('trimestre_id') ?: $dateTrimester?->id;
+        $selectedTrimester = $trimesterPeriods->firstWhere('id', $selectedTrimesterId);
+        $trimesterEnd = $selectedTrimester?->fecha_fin ?? now()->toDateString();
         $students = $selectedSectionId
             ? Student::active()->where('seccion_id', $selectedSectionId)->orderBy('apellidos')->orderBy('nombres')->get()
             : collect();
@@ -107,6 +113,27 @@ class PanelController extends Controller
                 'justificante' => $record?->justificante,
             ];
         });
+        $trimesterRecords = $selectedSectionId && $selectedTrimester?->fecha_inicio && $trimesterEnd >= $selectedTrimester->fecha_inicio
+            ? StudentAttendance::query()
+                ->where('seccion_id', $selectedSectionId)
+                ->whereBetween('fecha', [$selectedTrimester->fecha_inicio, $trimesterEnd])
+                ->get(['alumno_id', 'estado'])
+            : collect();
+        $trimesterStudentSummary = $students->map(function (Student $student) use ($trimesterRecords): array {
+            $records = $trimesterRecords->where('alumno_id', $student->id);
+            $total = $records->count();
+            $present = $records->where('estado', 'presente')->count();
+
+            return [
+                'name' => trim($student->nombres.' '.$student->apellidos),
+                'presentes' => $present,
+                'ausentes' => $records->where('estado', 'ausente')->count(),
+                'justificados' => $records->where('estado', 'justificado')->count(),
+                'porcentaje' => $total > 0 ? round(($present / $total) * 100, 1) : null,
+            ];
+        });
+        $trimesterTotal = $trimesterRecords->count();
+        $trimesterPresent = $trimesterRecords->where('estado', 'presente')->count();
 
         return view('panel.attendance', [
             ...$this->baseData(),
@@ -118,6 +145,7 @@ class PanelController extends Controller
                 'anio_escolar' => $selectedYear,
                 'seccion_id' => $selectedSectionId,
                 'fecha' => $selectedDate,
+                'trimestre_id' => $selectedTrimesterId,
             ],
             'attendanceSummary' => [
                 'presentes' => $attendanceStudents->where('estado', 'presente')->count(),
@@ -125,6 +153,16 @@ class PanelController extends Controller
                 'justificados' => $attendanceStudents->where('estado', 'justificado')->count(),
                 'pendientes' => $attendanceStudents->filter(fn (array $student) => $student['estado'] === null)->count(),
             ],
+            'attendanceTrimesters' => $trimesterPeriods,
+            'attendanceSelectedTrimester' => $selectedTrimester,
+            'attendanceTrimesterEnd' => $trimesterEnd,
+            'attendanceTrimesterSummary' => [
+                'presentes' => $trimesterPresent,
+                'ausentes' => $trimesterRecords->where('estado', 'ausente')->count(),
+                'justificados' => $trimesterRecords->where('estado', 'justificado')->count(),
+                'porcentaje' => $trimesterTotal > 0 ? round(($trimesterPresent / $trimesterTotal) * 100, 1) : null,
+            ],
+            'attendanceTrimesterStudents' => $trimesterStudentSummary,
         ]);
     }
 
@@ -335,6 +373,7 @@ class PanelController extends Controller
         return Pdf::loadView('panel.reportcard-pdf', [
             'reports' => $reports,
             'periodLabel' => $selectedPeriod === '' ? 'Anual' : $selectedPeriodMeta['label'],
+            'academicYearLabel' => app(SystemSettingsService::class)->value('report.academic_year'),
         ])->setPaper('legal', 'landscape')->download($fileName);
     }
 
@@ -404,6 +443,7 @@ class PanelController extends Controller
             ...$this->baseData(),
             'activeMenu' => 'config',
             'systemSettings' => app(SystemSettingsService::class)->publicValues(),
+            'trimesters' => app(TrimesterPeriodService::class)->periods(),
             'canManageSystemSettings' => (auth()->user()?->role()->value('nombre') ?? null) === 'admin',
         ]);
     }

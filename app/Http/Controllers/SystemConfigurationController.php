@@ -8,8 +8,10 @@ use App\Support\AppUrl;
 use Illuminate\Http\RedirectResponse;
 use Illuminate\Http\Request;
 use Illuminate\Support\Facades\Auth;
+use Illuminate\Support\Facades\DB;
 use Illuminate\Support\Facades\Log;
 use Illuminate\Support\Facades\Mail;
+use Illuminate\Support\Facades\Validator;
 use Illuminate\Support\Str;
 use Illuminate\Validation\Rule;
 use Throwable;
@@ -20,16 +22,24 @@ class SystemConfigurationController extends Controller
     {
         $this->authorizeAdministrator();
         $data = $this->validateSettings($request);
-        foreach (['mail_mailer' => 'mail.mailer', 'mail_host' => 'mail.host', 'mail_port' => 'mail.port', 'mail_username' => 'mail.username', 'mail_scheme' => 'mail.scheme', 'mail_from_address' => 'mail.from.address', 'mail_from_name' => 'mail.from.name', 'mail_rate_limit_per_minute' => 'mail.rate_limit_per_minute', 'telegram_chat_id' => 'telegram.chat_id', 'telegram_timeout' => 'telegram.timeout'] as $input => $key) {
-            $settings->put($key, $data[$input] ?? '');
-        }
-        $settings->put('telegram.enabled', $request->boolean('telegram_enabled') ? '1' : '0');
-        if ($request->filled('mail_password')) {
-            $settings->put('mail.password', $data['mail_password'], true);
-        }
-        if ($request->filled('telegram_bot_token')) {
-            $settings->put('telegram.bot_token', $data['telegram_bot_token'], true);
-        }
+        DB::transaction(function () use ($data, $request, $settings): void {
+            foreach (['report_academic_year' => 'report.academic_year', 'mail_mailer' => 'mail.mailer', 'mail_host' => 'mail.host', 'mail_port' => 'mail.port', 'mail_username' => 'mail.username', 'mail_scheme' => 'mail.scheme', 'mail_from_address' => 'mail.from.address', 'mail_from_name' => 'mail.from.name', 'mail_rate_limit_per_minute' => 'mail.rate_limit_per_minute', 'telegram_chat_id' => 'telegram.chat_id', 'telegram_timeout' => 'telegram.timeout'] as $input => $key) {
+                $settings->put($key, $data[$input] ?? '');
+            }
+            $settings->put('telegram.enabled', $request->boolean('telegram_enabled') ? '1' : '0');
+            if ($request->filled('mail_password')) {
+                $settings->put('mail.password', $data['mail_password'], true);
+            }
+            if ($request->filled('telegram_bot_token')) {
+                $settings->put('telegram.bot_token', $data['telegram_bot_token'], true);
+            }
+
+            foreach (($data['trimester_starts'] ?? []) as $trimesterId => $startDate) {
+                DB::table('trimestres')->where('id', $trimesterId)->update([
+                    'fecha_inicio' => filled($startDate) ? $startDate : null,
+                ]);
+            }
+        });
         $settings->apply();
         Mail::purge('smtp');
 
@@ -105,11 +115,37 @@ class SystemConfigurationController extends Controller
 
     private function validateSettings(Request $request): array
     {
-        return $request->validate([
+        $validator = Validator::make($request->all(), [
+            'report_academic_year' => ['nullable', 'string', 'max:30'],
+            'trimester_starts' => ['nullable', 'array'],
+            'trimester_starts.*' => ['nullable', 'date_format:Y-m-d'],
             'mail_mailer' => ['required', Rule::in(['smtp', 'log'])], 'mail_host' => ['nullable', 'string', 'max:150'], 'mail_port' => ['nullable', 'integer', 'min:1', 'max:65535'],
             'mail_username' => ['nullable', 'string', 'max:150'], 'mail_password' => ['nullable', 'string', 'max:255'], 'mail_scheme' => ['nullable', Rule::in(['tls', 'ssl'])],
             'mail_from_address' => ['nullable', 'email', 'max:150'], 'mail_from_name' => ['nullable', 'string', 'max:150'], 'mail_rate_limit_per_minute' => ['required', 'integer', 'min:1', 'max:300'], 'telegram_bot_token' => ['nullable', 'string', 'max:255'],
             'telegram_chat_id' => ['nullable', 'string', 'max:100'], 'telegram_timeout' => ['nullable', 'integer', 'min:1', 'max:30'],
         ]);
+
+        $validator->after(function ($validator) use ($request): void {
+            $trimesters = DB::table('trimestres')->orderBy('numero')->get(['id', 'nombre']);
+            $starts = $trimesters->map(fn (object $trimester): string => trim((string) $request->input('trimester_starts.'.$trimester->id, '')));
+            $configured = $starts->filter(fn (string $date): bool => $date !== '');
+
+            if ($configured->isNotEmpty() && $configured->count() !== $trimesters->count()) {
+                $validator->errors()->add('trimester_starts', 'Configura la fecha inicial de todos los trimestres o deja todas vacías.');
+
+                return;
+            }
+
+            for ($index = 1; $index < $starts->count(); $index++) {
+                if ($starts[$index] !== '' && $starts[$index] <= $starts[$index - 1]) {
+                    $validator->errors()->add(
+                        'trimester_starts.'.$trimesters[$index]->id,
+                        'La fecha de '.$trimesters[$index]->nombre.' debe ser posterior a la del trimestre anterior.'
+                    );
+                }
+            }
+        });
+
+        return $validator->validate();
     }
 }

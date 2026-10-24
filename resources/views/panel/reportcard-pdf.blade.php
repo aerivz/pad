@@ -48,32 +48,22 @@
             vertical-align: middle;
         }
 
-        .brand-mark {
-            font-size: 24px;
-            font-weight: 700;
-            color: #7f1d1d;
-            letter-spacing: 1px;
+        .brand-left {
+            text-align: left;
         }
 
-        .brand-name {
-            font-size: 7px;
-            font-weight: 700;
-            letter-spacing: 2px;
-            color: #4b5563;
-            line-height: 1.2;
+        .brand-right {
+            text-align: right;
         }
 
-        .crest {
-            border: 1px solid #6b7280;
-            border-radius: 50%;
-            width: 42px;
-            height: 42px;
-            margin-left: auto;
-            text-align: center;
-            line-height: 42px;
-            font-weight: 700;
-            color: #7f1d1d;
-            font-size: 8px;
+        .brand-logo-left {
+            width: 58px;
+            height: auto;
+        }
+
+        .brand-logo-right {
+            width: 150px;
+            height: auto;
         }
 
         .report-title {
@@ -159,7 +149,7 @@
         }
 
         .signatures td {
-            width: 33.33%;
+            width: 50%;
             text-align: center;
             vertical-align: bottom;
         }
@@ -171,17 +161,6 @@
             height: 12px;
         }
 
-        .seal {
-            width: 54px;
-            height: 54px;
-            margin: 0 auto;
-            border: 1px solid #9ca3af;
-            border-radius: 50%;
-            line-height: 54px;
-            color: #6b7280;
-            font-size: 7px;
-            font-weight: 700;
-        }
     </style>
 </head>
 <body>
@@ -190,16 +169,15 @@
             <table class="page-header">
                 <tr>
                     <td class="brand-left">
-                        <div class="brand-mark">ACI</div>
-                        <div class="brand-name">ACADEMIA<br>CRISTIANA<br>INTERNACIONAL</div>
+                        <img class="brand-logo-left" src="{{ public_path('images/aci-crest.jpeg') }}" alt="Escudo ACI">
                     </td>
                     <td class="brand-center">
-                        <div class="report-title">Academic Report {{ $report['student']['academic_year'] - 1 }} - {{ $report['student']['academic_year'] }}</div>
+                        <div class="report-title">Academic Report {{ filled($academicYearLabel ?? null) ? $academicYearLabel : (($report['student']['academic_year'] - 1).' - '.$report['student']['academic_year']) }}</div>
                         <div class="report-subtitle">{{ $report['student']['section_name'] }}</div>
                         <div>{{ $periodLabel ?? ($report['is_annual'] ? 'Anual' : 'Período seleccionado') }}</div>
                     </td>
                     <td class="brand-right">
-                        <div class="crest">ACI</div>
+                        <img class="brand-logo-right" src="{{ public_path('images/aci-wordmark.jpeg') }}" alt="Academia Cristiana Internacional">
                     </td>
                 </tr>
             </table>
@@ -284,9 +262,6 @@
                         <div class="signature-line"></div>
                         <strong>{{ $report['signatures']['headmaster'] }}</strong><br>
                         Headmaster
-                    </td>
-                    <td>
-                        <div class="seal">SELLO</div>
                     </td>
                     <td>
                         <div class="signature-line"></div>

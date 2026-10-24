@@ -175,6 +175,7 @@ class AnnualReportService
         return Pdf::loadView('panel.reportcard-pdf', [
             'reports' => collect([$report]),
             'periodLabel' => 'Anual',
+            'academicYearLabel' => app(SystemSettingsService::class)->value('report.academic_year'),
         ])->setPaper('legal', 'landscape')->output();
     }
 

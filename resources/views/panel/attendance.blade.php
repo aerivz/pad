@@ -4,7 +4,7 @@
 
 @section('content')
 <style>
-    .attendance-filters { display: grid; grid-template-columns: 1fr 2fr 1fr auto; gap: 1rem; align-items: end; }
+    .attendance-filters { display: grid; grid-template-columns: 1fr 2fr 1.4fr 1fr auto; gap: 1rem; align-items: end; }
     .attendance-stats { display: grid; grid-template-columns: repeat(4, 1fr); gap: .75rem; }
     .attendance-stat { border-radius: .8rem; padding: .8rem 1rem; background: #f8fafc; border: 1px solid #e2e8f0; }
     .attendance-stat strong { display: block; font-size: 1.35rem; line-height: 1.1; }
@@ -74,6 +74,15 @@
                 </select>
             </div>
             <div class="form-group mb-0">
+                <label>Resumen trimestral</label>
+                <select name="trimestre_id" class="form-control">
+                    <option value="">Según la fecha</option>
+                    @foreach ($attendanceTrimesters as $trimester)
+                        <option value="{{ $trimester->id }}" @selected((int) $attendanceFilters['trimestre_id'] === (int) $trimester->id)>{{ $trimester->nombre }}{{ $trimester->fecha_inicio ? '' : ' (sin configurar)' }}</option>
+                    @endforeach
+                </select>
+            </div>
+            <div class="form-group mb-0">
                 <label>Fecha</label>
                 <input type="date" name="fecha" class="form-control" value="{{ $attendanceFilters['fecha'] }}">
             </div>
@@ -89,6 +98,45 @@
         <div class="attendance-stat justified"><strong data-summary="justificado">{{ $attendanceSummary['justificados'] }}</strong><span>Justificados</span></div>
         <div class="attendance-stat"><strong data-summary="pendiente">{{ $attendanceSummary['pendientes'] }}</strong><span>Pendientes</span></div>
     </div>
+
+    @if ($attendanceSelectedTrimester?->fecha_inicio)
+        <div class="card maint-card mb-3">
+            <div class="card-header border-0">
+                <strong>Resumen de {{ $attendanceSelectedTrimester->nombre }}</strong>
+                <div class="text-muted small">
+                    {{ \Carbon\Carbon::parse($attendanceSelectedTrimester->fecha_inicio)->format('d/m/Y') }}
+                    al {{ \Carbon\Carbon::parse($attendanceTrimesterEnd)->format('d/m/Y') }}
+                    @if (! $attendanceSelectedTrimester->fecha_fin)(acumulado hasta hoy)@endif
+                </div>
+            </div>
+            <div class="card-body pt-0">
+                <div class="attendance-stats mb-3">
+                    <div class="attendance-stat present"><strong>{{ $attendanceTrimesterSummary['presentes'] }}</strong><span>Presentes registrados</span></div>
+                    <div class="attendance-stat absent"><strong>{{ $attendanceTrimesterSummary['ausentes'] }}</strong><span>Ausencias</span></div>
+                    <div class="attendance-stat justified"><strong>{{ $attendanceTrimesterSummary['justificados'] }}</strong><span>Justificadas</span></div>
+                    <div class="attendance-stat"><strong>{{ $attendanceTrimesterSummary['porcentaje'] === null ? '-' : $attendanceTrimesterSummary['porcentaje'].'%' }}</strong><span>Asistencia</span></div>
+                </div>
+                <div class="table-responsive">
+                    <table class="table table-sm maint-table mb-0">
+                        <thead><tr><th>Alumno</th><th class="text-center">Presentes</th><th class="text-center">Ausencias</th><th class="text-center">Justificadas</th><th class="text-center">Asistencia</th></tr></thead>
+                        <tbody>
+                            @foreach ($attendanceTrimesterStudents as $studentSummary)
+                                <tr>
+                                    <td>{{ $studentSummary['name'] }}</td>
+                                    <td class="text-center">{{ $studentSummary['presentes'] }}</td>
+                                    <td class="text-center">{{ $studentSummary['ausentes'] }}</td>
+                                    <td class="text-center">{{ $studentSummary['justificados'] }}</td>
+                                    <td class="text-center font-weight-bold">{{ $studentSummary['porcentaje'] === null ? '-' : $studentSummary['porcentaje'].'%' }}</td>
+                                </tr>
+                            @endforeach
+                        </tbody>
+                    </table>
+                </div>
+            </div>
+        </div>
+    @else
+        <div class="alert alert-info">Configura las fechas iniciales de los trimestres en Mantenimiento → Configuración para habilitar el resumen trimestral.</div>
+    @endif
 
     @if ($canManageAttendance)
     <div class="attendance-mobile">
@@ -136,6 +184,7 @@
             @csrf
             <input type="hidden" name="seccion_id" value="{{ $attendanceFilters['seccion_id'] }}">
             <input type="hidden" name="fecha" value="{{ $attendanceFilters['fecha'] }}">
+            <input type="hidden" name="trimestre_id" value="{{ $attendanceFilters['trimestre_id'] }}">
             <div class="card-body pt-0">
                 <div class="table-responsive">
                     <table class="table maint-table attendance-table">
