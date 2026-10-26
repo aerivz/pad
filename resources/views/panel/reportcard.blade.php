@@ -87,22 +87,22 @@
                             @php($termData = $subject['terms'][$term->numero] ?? [])
                             @foreach (['progress_1', 'progress_2', 'period_average'] as $field)
                                 @php($value = $termData[$field] ?? null)
-                                <td class="text-center">{{ $value ?? '-' }}</td>
+                                <td class="text-center">{{ \App\Support\GradeFormatter::whole($value) }}</td>
                             @endforeach
-                            @if ((int) $term->numero === 2)<td class="text-center">{{ $subject['semester_evaluation'] ?? '-' }}</td>@endif
-                            @if ((int) $term->numero === 4)<td class="text-center">{{ $subject['final_evaluation'] ?? '-' }}</td>@endif
+                            @if ((int) $term->numero === 2)<td class="text-center">{{ \App\Support\GradeFormatter::whole($subject['semester_evaluation']) }}</td>@endif
+                            @if ((int) $term->numero === 4)<td class="text-center">{{ \App\Support\GradeFormatter::whole($subject['final_evaluation']) }}</td>@endif
                         @endforeach
-                        @if ($report['is_annual'])<td class="text-center font-weight-bold">{{ $subject['final_period'] ?? '-' }}</td>@endif
+                        @if ($report['is_annual'])<td class="text-center font-weight-bold">{{ \App\Support\GradeFormatter::whole($subject['final_period']) }}</td>@endif
                     </tr>
                 @endforeach
                 <tr class="bg-light">
                     <td><strong>Conducta</strong></td>
                     @foreach ($report['terms'] as $term)
-                        <td colspan="3" class="text-center font-weight-bold">{{ $report['homeroom'][$term->numero]['conduct'] ?? '-' }}</td>
+                        <td colspan="3" class="text-center font-weight-bold">{{ \App\Support\GradeFormatter::whole($report['homeroom'][$term->numero]['conduct'] ?? null) }}</td>
                         @if ((int) $term->numero === 2)<td></td>@endif
                         @if ((int) $term->numero === 4)<td></td>@endif
                     @endforeach
-                    @if ($report['is_annual'])<td class="text-center font-weight-bold">{{ $report['final_conduct'] ?? '-' }}</td>@endif
+                    @if ($report['is_annual'])<td class="text-center font-weight-bold">{{ \App\Support\GradeFormatter::whole($report['final_conduct']) }}</td>@endif
                 </tr>
             </tbody>
         </table>

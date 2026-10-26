@@ -291,27 +291,27 @@
                             <td class="subject-col">{{ $subject['subject'] }}</td>
                             @foreach ($report['terms'] as $term)
                                 @php($termData = $subject['terms'][$term->numero] ?? null)
-                                <td class="score {{ ($termData['progress_1'] ?? null) === null ? 'empty' : '' }}">{{ $termData['progress_1'] ?? '-' }}</td>
-                                <td class="score {{ ($termData['progress_2'] ?? null) === null ? 'empty' : '' }}">{{ $termData['progress_2'] ?? '-' }}</td>
-                                <td class="score {{ ($termData['period_average'] ?? null) === null ? 'empty' : '' }}">{{ $termData['period_average'] ?? '-' }}</td>
+                                <td class="score {{ ($termData['progress_1'] ?? null) === null ? 'empty' : '' }}">{{ \App\Support\GradeFormatter::whole($termData['progress_1'] ?? null) }}</td>
+                                <td class="score {{ ($termData['progress_2'] ?? null) === null ? 'empty' : '' }}">{{ \App\Support\GradeFormatter::whole($termData['progress_2'] ?? null) }}</td>
+                                <td class="score {{ ($termData['period_average'] ?? null) === null ? 'empty' : '' }}">{{ \App\Support\GradeFormatter::whole($termData['period_average'] ?? null) }}</td>
                                 @if ((int) $term->numero === 2)
-                                    <td class="score {{ $subject['semester_evaluation'] === null ? 'empty' : '' }}">{{ $subject['semester_evaluation'] ?? '-' }}</td>
+                                    <td class="score {{ $subject['semester_evaluation'] === null ? 'empty' : '' }}">{{ \App\Support\GradeFormatter::whole($subject['semester_evaluation']) }}</td>
                                 @endif
                                 @if ((int) $term->numero === 4)
-                                    <td class="score {{ $subject['final_evaluation'] === null ? 'empty' : '' }}">{{ $subject['final_evaluation'] ?? '-' }}</td>
+                                    <td class="score {{ $subject['final_evaluation'] === null ? 'empty' : '' }}">{{ \App\Support\GradeFormatter::whole($subject['final_evaluation']) }}</td>
                                 @endif
                             @endforeach
-                            @if ($report['is_annual'])<td class="score {{ $subject['final_period'] === null ? 'empty' : '' }}">{{ $subject['final_period'] ?? '-' }}</td>@endif
+                            @if ($report['is_annual'])<td class="score {{ $subject['final_period'] === null ? 'empty' : '' }}">{{ \App\Support\GradeFormatter::whole($subject['final_period']) }}</td>@endif
                         </tr>
                     @endforeach
                     <tr>
                         <td class="subject-col">Conduct</td>
                         @foreach ($report['terms'] as $term)
-                            <td colspan="3" class="score">{{ $report['homeroom'][$term->numero]['conduct'] ?? '-' }}</td>
+                            <td colspan="3" class="score">{{ \App\Support\GradeFormatter::whole($report['homeroom'][$term->numero]['conduct'] ?? null) }}</td>
                             @if ((int) $term->numero === 2)<td></td>@endif
                             @if ((int) $term->numero === 4)<td></td>@endif
                         @endforeach
-                        @if ($report['is_annual'])<td class="score">{{ $report['final_conduct'] ?? '-' }}</td>@endif
+                        @if ($report['is_annual'])<td class="score">{{ \App\Support\GradeFormatter::whole($report['final_conduct']) }}</td>@endif
                     </tr>
                 </tbody>
             </table>
