@@ -18,6 +18,9 @@ class ReportCardPdfViewTest extends TestCase
         $this->assertStringContainsString('Academic Report 2026 - 2027', $html);
         $this->assertStringContainsString('aci-crest.jpeg', $html);
         $this->assertStringContainsString('aci-wordmark.jpeg', $html);
+        $this->assertStringContainsString('density-spacious', $html);
+        $this->assertStringContainsString('<strong>Dirección</strong>', $html);
+        $this->assertStringNotContainsString('Headmaster', $html);
         $this->assertStringNotContainsString('SELLO', $html);
     }
 
@@ -48,7 +51,6 @@ class ReportCardPdfViewTest extends TestCase
             'is_annual' => true,
             'teacher_comments' => [],
             'signatures' => [
-                'headmaster' => 'Dirección Académica',
                 'teacher' => 'Docente de prueba',
             ],
         ];

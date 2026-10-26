@@ -11,7 +11,7 @@
         body {
             font-family: DejaVu Sans, sans-serif;
             color: #111827;
-            font-size: 7px;
+            font-size: 8px;
             margin: 0;
         }
 
@@ -20,7 +20,7 @@
         }
 
         .report-page.page-break {
-            page-break-after: always;
+            page-break-before: always;
         }
 
         .page-header,
@@ -67,13 +67,13 @@
         }
 
         .report-title {
-            font-size: 9px;
+            font-size: 11px;
             font-weight: 700;
             text-transform: uppercase;
         }
 
         .report-subtitle {
-            font-size: 8px;
+            font-size: 9px;
             font-weight: 700;
             margin-top: 2px;
         }
@@ -87,7 +87,7 @@
         .grades-table td,
         .comment-box td {
             border: 1px solid #4b5563;
-            padding: 2px 3px;
+            padding: 4px 5px;
         }
 
         .info-label {
@@ -103,13 +103,42 @@
         .grades-table th {
             background: #f9fafb;
             text-transform: uppercase;
-            font-size: 6px;
+            font-size: 7px;
             text-align: center;
             line-height: 1.1;
         }
 
         .grades-table td {
-            font-size: 6.4px;
+            font-size: 7.4px;
+            line-height: 1.2;
+        }
+
+        .report-page.density-spacious .grades-table th,
+        .report-page.density-spacious .grades-table td {
+            padding-top: 5px;
+            padding-bottom: 5px;
+        }
+
+        .report-page.density-comfortable .grades-table th,
+        .report-page.density-comfortable .grades-table td {
+            padding-top: 4px;
+            padding-bottom: 4px;
+        }
+
+        .report-page.density-compact .grades-table th,
+        .report-page.density-compact .grades-table td {
+            padding-top: 2.5px;
+            padding-bottom: 2.5px;
+            font-size: 6.8px;
+        }
+
+        .report-page.few-columns .subject-col {
+            width: 18%;
+        }
+
+        .report-page.many-columns .grades-table th,
+        .report-page.many-columns .grades-table td {
+            font-size: 6.5px;
         }
 
         .subject-col {
@@ -143,9 +172,9 @@
         }
 
         .comment-text {
-            font-size: 8px;
+            font-size: 9px;
             line-height: 1.25;
-            padding: 6px 8px;
+            padding: 8px 10px;
         }
 
         .signatures td {
@@ -165,7 +194,12 @@
 </head>
 <body>
     @foreach ($reports as $report)
-        <div class="report-page {{ ! $loop->last ? 'page-break' : '' }}">
+        @php
+            $subjectCount = count($report['subjects']);
+            $densityClass = $subjectCount <= 12 ? 'density-spacious' : ($subjectCount <= 17 ? 'density-comfortable' : 'density-compact');
+            $columnClass = count($report['terms']) <= 2 ? 'few-columns' : 'many-columns';
+        @endphp
+        <div class="report-page {{ $densityClass }} {{ $columnClass }} {{ ! $loop->first ? 'page-break' : '' }}">
             <table class="page-header">
                 <tr>
                     <td class="brand-left">
@@ -260,8 +294,7 @@
                 <tr>
                     <td>
                         <div class="signature-line"></div>
-                        <strong>{{ $report['signatures']['headmaster'] }}</strong><br>
-                        Headmaster
+                        <strong>Dirección</strong>
                     </td>
                     <td>
                         <div class="signature-line"></div>

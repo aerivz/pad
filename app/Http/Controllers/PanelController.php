@@ -1372,7 +1372,6 @@ class PanelController extends Controller
                 ->all(),
             'is_annual' => $maxTrimesterNumber === null,
             'signatures' => [
-                'headmaster' => 'Dirección Academica',
                 'teacher' => $teacherName,
             ],
         ];

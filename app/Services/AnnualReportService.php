@@ -143,7 +143,6 @@ class AnnualReportService
                 ->all(),
             'is_annual' => true,
             'signatures' => [
-                'headmaster' => 'Dirección Academica',
                 'teacher' => $teacherName,
             ],
         ];
