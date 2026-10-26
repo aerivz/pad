@@ -40,9 +40,12 @@ class AppServiceProvider extends ServiceProvider
 
         app(SystemSettingsService::class)->apply();
 
+        View::composer(['layouts.panel', 'panel.config'], function ($view): void {
+            $view->with('applicationLicense', app(LicenseService::class)->status());
+        });
+
         View::composer('layouts.panel', function ($view): void {
             $user = auth()->user();
-            $view->with('applicationLicense', app(LicenseService::class)->status());
 
             if (! $user || ! Schema::hasTable('notificaciones_usuarios')) {
                 $view->with(['headerNotifications' => collect(), 'unreadNotificationCount' => 0]);
