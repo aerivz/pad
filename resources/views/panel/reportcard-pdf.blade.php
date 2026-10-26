@@ -11,7 +11,7 @@
         body {
             font-family: DejaVu Sans, sans-serif;
             color: #111827;
-            font-size: 8px;
+            font-size: 9.5px;
             margin: 0;
         }
 
@@ -67,13 +67,13 @@
         }
 
         .report-title {
-            font-size: 11px;
+            font-size: 13px;
             font-weight: 700;
             text-transform: uppercase;
         }
 
         .report-subtitle {
-            font-size: 9px;
+            font-size: 10.5px;
             font-weight: 700;
             margin-top: 2px;
         }
@@ -87,7 +87,7 @@
         .grades-table td,
         .comment-box td {
             border: 1px solid #4b5563;
-            padding: 4px 5px;
+            padding: 5px 6px;
         }
 
         .info-label {
@@ -103,33 +103,33 @@
         .grades-table th {
             background: #f9fafb;
             text-transform: uppercase;
-            font-size: 7px;
+            font-size: 8.2px;
             text-align: center;
             line-height: 1.1;
         }
 
         .grades-table td {
-            font-size: 7.4px;
+            font-size: 9px;
             line-height: 1.2;
         }
 
         .report-page.density-spacious .grades-table th,
         .report-page.density-spacious .grades-table td {
-            padding-top: 5px;
-            padding-bottom: 5px;
+            padding-top: 7px;
+            padding-bottom: 7px;
         }
 
         .report-page.density-comfortable .grades-table th,
         .report-page.density-comfortable .grades-table td {
-            padding-top: 4px;
-            padding-bottom: 4px;
+            padding-top: 6px;
+            padding-bottom: 6px;
         }
 
         .report-page.density-compact .grades-table th,
         .report-page.density-compact .grades-table td {
-            padding-top: 2.5px;
-            padding-bottom: 2.5px;
-            font-size: 6.8px;
+            padding-top: 3.25px;
+            padding-bottom: 3.25px;
+            font-size: 7.6px;
         }
 
         .report-page.few-columns .subject-col {
@@ -138,7 +138,45 @@
 
         .report-page.many-columns .grades-table th,
         .report-page.many-columns .grades-table td {
+            font-size: 7.2px;
+        }
+
+        .report-page.density-compact.many-columns {
+            font-size: 8px;
+        }
+
+        .report-page.density-compact.many-columns .report-title {
+            font-size: 11px;
+        }
+
+        .report-page.density-compact.many-columns .report-subtitle {
+            font-size: 9px;
+        }
+
+        .report-page.density-compact.many-columns .info-table td {
+            padding: 3px 4px;
+        }
+
+        .report-page.density-compact.many-columns .grades-table th,
+        .report-page.density-compact.many-columns .grades-table td {
+            padding-top: 2.25px;
+            padding-bottom: 2.25px;
             font-size: 6.5px;
+        }
+
+        .report-page.density-compact.many-columns .comment-box {
+            margin-top: 5px;
+            margin-bottom: 7px;
+            min-height: 42px;
+        }
+
+        .report-page.density-compact.many-columns .comment-box td {
+            padding: 5px 6px;
+        }
+
+        .report-page.density-compact.many-columns .comment-text,
+        .report-page.density-compact.many-columns .signatures td {
+            font-size: 8px;
         }
 
         .subject-col {
@@ -172,7 +210,7 @@
         }
 
         .comment-text {
-            font-size: 9px;
+            font-size: 10px;
             line-height: 1.25;
             padding: 8px 10px;
         }
@@ -181,6 +219,7 @@
             width: 50%;
             text-align: center;
             vertical-align: bottom;
+            font-size: 9.5px;
         }
 
         .signature-line {
