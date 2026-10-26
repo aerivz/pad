@@ -17,7 +17,7 @@ class SystemBackupController extends Controller
             'estado' => 'pendiente',
         ]);
 
-        GenerateSystemBackupJob::dispatch($backup->id)->onConnection('database')->onQueue('backups');
+        GenerateSystemBackupJob::dispatch($backup->id)->onConnection('backups')->onQueue('backups');
 
         return redirect()
             ->route('backups.index')

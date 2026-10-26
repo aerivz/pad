@@ -22,12 +22,20 @@ class GenerateSystemBackupJob implements ShouldQueue
 
     public function handle(SystemBackupService $service): void
     {
-        $backup = SystemBackup::query()->find($this->backupId);
+        $claimed = SystemBackup::query()
+            ->whereKey($this->backupId)
+            ->where('estado', 'pendiente')
+            ->update([
+                'estado' => 'procesando',
+                'error_message' => null,
+                'started_at' => now(),
+                'finished_at' => null,
+            ]);
 
-        if (! $backup) {
+        if ($claimed === 0) {
             return;
         }
 
-        $service->generate($backup);
+        $service->generate(SystemBackup::query()->findOrFail($this->backupId));
     }
 }

@@ -23,7 +23,7 @@
                 <div class="config-note mb-3">
                     <strong>Incluye:</strong> base de datos en SQL, carpeta <code>public/uploads</code> y carpeta <code>public/images</code>.
                     <br>
-                    <strong>Segundo plano:</strong> el proceso usa cola <code>database</code>; la tabla se actualiza cuando el ZIP termina.
+                    <strong>Segundo plano:</strong> el scheduler procesa la cola <code>backups</code> cada minuto; la tabla se actualiza cuando el ZIP termina.
                 </div>
                 <div class="table-responsive">
                     <table class="table table-hover mb-0">
