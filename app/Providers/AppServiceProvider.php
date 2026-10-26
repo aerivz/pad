@@ -3,6 +3,7 @@
 namespace App\Providers;
 
 use App\Models\UserNotification;
+use App\Services\LicenseService;
 use App\Services\SystemSettingsService;
 use Illuminate\Cache\RateLimiting\Limit;
 use Illuminate\Http\Request;
@@ -41,6 +42,7 @@ class AppServiceProvider extends ServiceProvider
 
         View::composer('layouts.panel', function ($view): void {
             $user = auth()->user();
+            $view->with('applicationLicense', app(LicenseService::class)->status());
 
             if (! $user || ! Schema::hasTable('notificaciones_usuarios')) {
                 $view->with(['headerNotifications' => collect(), 'unreadNotificationCount' => 0]);

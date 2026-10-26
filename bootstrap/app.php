@@ -1,6 +1,7 @@
 <?php
 
 use App\Http\Middleware\EnsureActiveUser;
+use App\Http\Middleware\EnsureLicenseAllowsChanges;
 use App\Http\Middleware\EnsureMenuAccess;
 use App\Http\Middleware\EnsureRoleAccess;
 use App\Http\Middleware\EnsureStrongPassword;
@@ -23,6 +24,7 @@ return Application::configure(basePath: dirname(__DIR__))
             'menu.access' => EnsureMenuAccess::class,
             'role.access' => EnsureRoleAccess::class,
             'user.active' => EnsureActiveUser::class,
+            'license.read_only' => EnsureLicenseAllowsChanges::class,
             'password.strong' => EnsureStrongPassword::class,
         ]);
     })

@@ -11,6 +11,7 @@ use App\Http\Controllers\EmailTemplateController;
 use App\Http\Controllers\EvaluationController;
 use App\Http\Controllers\GuardianController;
 use App\Http\Controllers\HomeroomEvaluationController;
+use App\Http\Controllers\LicenseController;
 use App\Http\Controllers\MediaController;
 use App\Http\Controllers\MenuManagementController;
 use App\Http\Controllers\NotificationController;
@@ -78,7 +79,7 @@ Route::prefix('pad')->middleware('guest')->group(function () {
     Route::post('/login', [AuthController::class, 'store'])->middleware('throttle:login');
 });
 
-Route::middleware(['auth', 'user.active', 'password.strong'])->group(function () {
+Route::middleware(['auth', 'user.active', 'password.strong', 'license.read_only'])->group(function () {
     Route::post('/logout', [AuthController::class, 'destroy'])->name('logout');
 
     Route::get('/perfil', [ProfileController::class, 'show'])->name('profile.show');
@@ -174,12 +175,13 @@ Route::middleware(['auth', 'user.active', 'password.strong'])->group(function ()
     Route::get('/backups/{backup}/download', [SystemBackupController::class, 'download'])->middleware(['menu.access:backups', 'role.access:admin'])->name('backups.download');
 
     Route::get('/configuracion', [PanelController::class, 'config'])->middleware(['menu.access:config', 'role.access:admin'])->name('config.index');
+    Route::put('/licencia', [LicenseController::class, 'update'])->middleware('role.access:admin')->name('license.update');
     Route::put('/configuracion', [SystemConfigurationController::class, 'update'])->middleware(['menu.access:config', 'role.access:admin'])->name('config.update');
     Route::post('/configuracion/correo-prueba', [SystemConfigurationController::class, 'sendTest'])->middleware(['menu.access:config', 'role.access:admin'])->name('config.email-test');
     Route::get('/errores', [PanelController::class, 'errorLogs'])->middleware(['menu.access:error_logs', 'role.access:admin'])->name('error-logs.index');
 });
 
-Route::prefix('pad')->middleware(['auth', 'user.active', 'password.strong'])->group(function () {
+Route::prefix('pad')->middleware(['auth', 'user.active', 'password.strong', 'license.read_only'])->group(function () {
     Route::post('/logout', [AuthController::class, 'destroy']);
     Route::get('/perfil', [ProfileController::class, 'show']);
     Route::put('/perfil', [ProfileController::class, 'update']);
@@ -275,6 +277,7 @@ Route::prefix('pad')->middleware(['auth', 'user.active', 'password.strong'])->gr
     Route::get('/backups/{backup}/download', [SystemBackupController::class, 'download'])->middleware(['menu.access:backups', 'role.access:admin']);
 
     Route::get('/configuracion', [PanelController::class, 'config'])->middleware(['menu.access:config', 'role.access:admin']);
+    Route::put('/licencia', [LicenseController::class, 'update'])->middleware('role.access:admin');
     Route::put('/configuracion', [SystemConfigurationController::class, 'update'])->middleware(['menu.access:config', 'role.access:admin']);
     Route::post('/configuracion/correo-prueba', [SystemConfigurationController::class, 'sendTest'])->middleware(['menu.access:config', 'role.access:admin']);
     Route::get('/errores', [PanelController::class, 'errorLogs'])->middleware(['menu.access:error_logs', 'role.access:admin']);

@@ -6,6 +6,46 @@
 @if (! $canManageSystemSettings)
     <div class="alert alert-warning">Solo el administrador puede modificar las credenciales de integracion.</div>
 @else
+    <div class="card maint-card" id="license">
+        <div class="card-header">
+            <h3 class="card-title"><i class="fas fa-key mr-2"></i>Licencia de la aplicación</h3>
+        </div>
+        <div class="card-body">
+            @php
+                $licenseState = $applicationLicense['state'] ?? 'disabled';
+                $licenseBadge = match ($licenseState) {
+                    'active' => 'success',
+                    'expiring' => 'warning',
+                    'disabled' => 'secondary',
+                    default => 'danger',
+                };
+            @endphp
+            <p>
+                <span class="badge badge-{{ $licenseBadge }} text-uppercase">{{ $licenseState }}</span>
+                <span class="ml-2">{{ $applicationLicense['message'] }}</span>
+            </p>
+            @if (filled($applicationLicense['payload']['customer'] ?? null))
+                <div class="small text-muted mb-3">
+                    Cliente: <strong>{{ $applicationLicense['payload']['customer'] }}</strong> ·
+                    Instalación: <strong>{{ $applicationLicense['payload']['installation'] }}</strong>
+                </div>
+            @endif
+            @if ($licenseState === 'disabled')
+                <div class="alert alert-info mb-0">Activa <code>APP_LICENSE_ENFORCED=true</code> y configura la instalación antes de usar el control de vencimiento.</div>
+            @else
+                <form method="POST" action="{{ \App\Support\AppUrl::route('license.update') }}">
+                    @csrf
+                    @method('PUT')
+                    <div class="form-group">
+                        <label>Nueva licencia firmada</label>
+                        <textarea name="license_token" rows="4" required class="form-control @error('license_token') is-invalid @enderror" autocomplete="off" placeholder="Pega aquí la licencia de renovación">{{ old('license_token') }}</textarea>
+                        @error('license_token')<div class="invalid-feedback">{{ $message }}</div>@enderror
+                    </div>
+                    <button class="btn btn-primary"><i class="fas fa-check-circle mr-1"></i>Validar e instalar</button>
+                </form>
+            @endif
+        </div>
+    </div>
     <div class="row">
         <div class="col-lg-8">
             <form method="POST" action="{{ \App\Support\AppUrl::route('config.update') }}" class="card maint-card">

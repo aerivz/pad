@@ -200,6 +200,32 @@ php artisan queue:work database --queue=emails --tries=3 --timeout=180
 
 Use ejecutable PHP 8.2+ configurado por hosting. El sistema notifica al creador del lote y usuarios administradores cuando termina.
 
+## Licencias y modo solo lectura
+
+La aplicacion puede validar licencias firmadas con vencimiento. La llave publica se instala con el sistema; la llave privada debe permanecer solamente con el proveedor y nunca debe copiarse al servidor del cliente.
+
+Generar las llaves una sola vez:
+
+```bash
+php artisan license:generate-keys --private="C:\ruta-segura\license-signing-private.pem" --public="resources\keys\license-public.pem"
+```
+
+Emitir una licencia nueva:
+
+```bash
+php artisan license:issue "Nombre del cliente" 2027-10-31 --installation=acinotas.com --timezone=America/El_Salvador --private="C:\ruta-segura\license-signing-private.pem" --output="licencia-acinotas.txt"
+```
+
+Configurar el servidor del cliente:
+
+```dotenv
+APP_LICENSE_ENFORCED=true
+APP_LICENSE_INSTALLATION=acinotas.com
+APP_LICENSE_WARNING_DAYS=15
+```
+
+La fecha indicada al emitir la licencia es el día en que inicia el modo solo lectura a las 00:00 de la zona horaria seleccionada. Despues de modificar `.env`, ejecute `php artisan optimize:clear`. Un administrador puede pegar el contenido de la licencia desde Configuracion. Cuando falta, vence o se altera una licencia, las consultas y descargas siguen disponibles, pero las solicitudes que crean, editan, eliminan o envian datos responden en modo solo lectura. El cierre de sesion y la instalacion de una renovacion permanecen habilitados.
+
 ## Rutas principales
 
 - `/pad/login`

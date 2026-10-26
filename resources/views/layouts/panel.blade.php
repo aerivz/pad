@@ -365,6 +365,7 @@
     $hasUserAvatar = filled($user?->avatar);
     $userAvatarUrl = $hasUserAvatar ? $user->avatar_url : null;
     $profileUrl = \App\Support\AppUrl::route('profile.show');
+    $isAdministrator = ($user?->role?->nombre ?? null) === 'admin';
     $menuSearchItems = collect($menu)->flatMap(function (array $item) {
         $children = $item['children'] ?? [];
 
@@ -518,6 +519,18 @@
         </div>
         <div class="content">
             <div class="container-fluid">
+                @if (($applicationLicense['state'] ?? 'disabled') === 'expiring')
+                    <div class="alert alert-warning">
+                        <i class="fas fa-clock mr-1"></i>{{ $applicationLicense['message'] }}
+                        @if ($isAdministrator)<a href="{{ \App\Support\AppUrl::route('config.index') }}#license" class="alert-link ml-1">Administrar licencia</a>@endif
+                    </div>
+                @elseif (! ($applicationLicense['allows_changes'] ?? true))
+                    <div class="alert alert-danger">
+                        <i class="fas fa-lock mr-1"></i><strong>Modo solo lectura.</strong>
+                        {{ $applicationLicense['message'] }}
+                        @if ($isAdministrator)<a href="{{ \App\Support\AppUrl::route('config.index') }}#license" class="alert-link ml-1">Instalar renovación</a>@endif
+                    </div>
+                @endif
                 @yield('content')
             </div>
         </div>
