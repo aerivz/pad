@@ -176,6 +176,7 @@ Route::middleware(['auth', 'user.active', 'password.strong'])->group(function ()
     Route::get('/configuracion', [PanelController::class, 'config'])->middleware(['menu.access:config', 'role.access:admin'])->name('config.index');
     Route::put('/configuracion', [SystemConfigurationController::class, 'update'])->middleware(['menu.access:config', 'role.access:admin'])->name('config.update');
     Route::post('/configuracion/correo-prueba', [SystemConfigurationController::class, 'sendTest'])->middleware(['menu.access:config', 'role.access:admin'])->name('config.email-test');
+    Route::get('/errores', [PanelController::class, 'errorLogs'])->middleware(['menu.access:error_logs', 'role.access:admin'])->name('error-logs.index');
 });
 
 Route::prefix('pad')->middleware(['auth', 'user.active', 'password.strong'])->group(function () {
@@ -276,4 +277,5 @@ Route::prefix('pad')->middleware(['auth', 'user.active', 'password.strong'])->gr
     Route::get('/configuracion', [PanelController::class, 'config'])->middleware(['menu.access:config', 'role.access:admin']);
     Route::put('/configuracion', [SystemConfigurationController::class, 'update'])->middleware(['menu.access:config', 'role.access:admin']);
     Route::post('/configuracion/correo-prueba', [SystemConfigurationController::class, 'sendTest'])->middleware(['menu.access:config', 'role.access:admin']);
+    Route::get('/errores', [PanelController::class, 'errorLogs'])->middleware(['menu.access:error_logs', 'role.access:admin']);
 });

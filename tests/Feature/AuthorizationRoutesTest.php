@@ -3,6 +3,7 @@
 namespace Tests\Feature;
 
 use App\Models\User;
+use App\Services\ApplicationLogReader;
 use Illuminate\Foundation\Testing\RefreshDatabase;
 use Illuminate\Support\Facades\DB;
 use Illuminate\Support\Facades\Hash;
@@ -59,6 +60,29 @@ class AuthorizationRoutesTest extends TestCase
             'id' => $subjectId,
             'activo' => true,
         ]);
+    }
+
+    public function test_only_admin_can_view_error_logs_with_today_as_default_range(): void
+    {
+        [$admin, $menuId] = $this->userWithMenu('admin', 'error_logs');
+        DB::table('rol_menu')->insert(['rol_id' => $admin->rol_id, 'menu_id' => $menuId]);
+        $today = now()->toDateString();
+        $this->mock(ApplicationLogReader::class, function ($mock) use ($today): void {
+            $mock->shouldReceive('errorsBetween')
+                ->once()
+                ->with($today, $today)
+                ->andReturn(['entries' => [], 'total' => 0, 'truncated' => false]);
+        });
+
+        $this->actingAs($admin)
+            ->get('/errores')
+            ->assertOk()
+            ->assertViewHas('errorLogFilters', ['desde' => $today, 'hasta' => $today]);
+
+        [$director, $directorMenuId] = $this->userWithMenu('director', 'error_logs');
+        DB::table('rol_menu')->insert(['rol_id' => $director->rol_id, 'menu_id' => $directorMenuId]);
+
+        $this->actingAs($director)->get('/errores')->assertForbidden();
     }
 
     private function userWithMenu(string $roleName, string $menuKey): array

@@ -152,7 +152,7 @@ class SchoolSeeder extends Seeder
             $roles = DB::table('roles')->pluck('id', 'nombre');
 
             $assignments = [
-                'admin' => ['dashboard', 'sections', 'students', 'teachers', 'subjects', 'guardians', 'gradebook', 'reportcard', 'emails', 'users', 'profiles', 'config'],
+                'admin' => ['dashboard', 'sections', 'students', 'teachers', 'subjects', 'guardians', 'gradebook', 'reportcard', 'emails', 'users', 'profiles', 'config', 'error_logs'],
                 'director' => ['dashboard', 'sections', 'students', 'teachers', 'subjects', 'guardians', 'reportcard'],
                 'secretaria' => ['dashboard', 'sections', 'students', 'teachers', 'subjects', 'guardians', 'gradebook', 'reportcard', 'emails'],
                 'profesor' => ['dashboard', 'students', 'subjects', 'gradebook', 'reportcard'],

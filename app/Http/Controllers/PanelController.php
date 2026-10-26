@@ -19,6 +19,7 @@ use App\Models\Subject;
 use App\Models\SystemBackup;
 use App\Models\Teacher;
 use App\Models\User;
+use App\Services\ApplicationLogReader;
 use App\Services\GradeCollectorService;
 use App\Services\SystemSettingsService;
 use App\Services\TrimesterPeriodService;
@@ -30,6 +31,7 @@ use Illuminate\Http\RedirectResponse;
 use Illuminate\Support\Collection;
 use Illuminate\Support\Facades\Auth;
 use Illuminate\Support\Facades\DB;
+use Illuminate\Support\Facades\Validator;
 use Illuminate\View\View;
 use Symfony\Component\HttpFoundation\Response;
 
@@ -445,6 +447,29 @@ class PanelController extends Controller
             'systemSettings' => app(SystemSettingsService::class)->publicValues(),
             'trimesters' => app(TrimesterPeriodService::class)->periods(),
             'canManageSystemSettings' => (auth()->user()?->role()->value('nombre') ?? null) === 'admin',
+        ]);
+    }
+
+    public function errorLogs(ApplicationLogReader $logReader): View
+    {
+        $today = now()->toDateString();
+        $filters = [
+            'desde' => (string) request('desde', $today),
+            'hasta' => (string) request('hasta', $today),
+        ];
+        Validator::make($filters, [
+            'desde' => ['required', 'date_format:Y-m-d'],
+            'hasta' => ['required', 'date_format:Y-m-d', 'after_or_equal:desde'],
+        ])->validate();
+        $result = $logReader->errorsBetween($filters['desde'], $filters['hasta']);
+
+        return view('panel.error-logs', [
+            ...$this->baseData(),
+            'activeMenu' => 'error_logs',
+            'errorLogFilters' => $filters,
+            'errorLogEntries' => $result['entries'],
+            'errorLogTotal' => $result['total'],
+            'errorLogTruncated' => $result['truncated'],
         ]);
     }
 
